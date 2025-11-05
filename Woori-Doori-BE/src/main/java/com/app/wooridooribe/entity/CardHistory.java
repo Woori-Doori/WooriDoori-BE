@@ -1,5 +1,6 @@
 package com.app.wooridooribe.entity;
 
+import com.app.wooridooribe.entity.type.StatusType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -31,8 +32,9 @@ public class CardHistory {
     @Column(name = "history_price", nullable = false)
     private Integer historyPrice; // 결제금액
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "history_status", nullable = false)
-    private String historyStatus; // 결제상태 (승인/거절)
+    private StatusType historyStatus;
 
     @Column(name = "history_category", nullable = false)
     private String historyCategory; // 카테고리

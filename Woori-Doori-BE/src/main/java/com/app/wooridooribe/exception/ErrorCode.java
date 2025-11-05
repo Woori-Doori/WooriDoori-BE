@@ -44,6 +44,7 @@ public enum ErrorCode {
     HISTORY_ISNULL(HttpStatus.NOT_FOUND, "HISTORY-002", "해당 소비 내역이 존재하지 않습니다."),
     HISTORY_ISNOTYOURS(HttpStatus.FORBIDDEN, "HISTORY-003", "해당 소비 내역은 수정이 불가합니다."),
     HISTORY_UPDATE_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "HISTORY-004", "수정에 실패했습니다."),
+    HISTORY_INVALID_DATE(HttpStatus.BAD_REQUEST, "HISTORY-005", "유효하지 않은 연/월 값입니다."),
     
     // 소비 일기
     DIARY_INSERT_INVALID(HttpStatus.BAD_REQUEST, "DIARY-001", "일기가 너무 깁니다."),

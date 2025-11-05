@@ -1,0 +1,31 @@
+package com.app.wooridooribe.controller;
+
+import com.app.wooridooribe.service.spending.SpendingService;
+import com.app.wooridooribe.controller.dto.ApiResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/history/calendar")
+public class SpendingController {
+
+    private final SpendingService spendingService;
+
+    /**
+     * 월별 소비 내역 조회
+     */
+    @GetMapping
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getMonthlySpending(
+            @RequestParam Long userId,
+            @RequestParam int year,
+            @RequestParam int month
+    ) {
+        Map<String, Object> result = spendingService.getMonthlySpendings(userId, year, month);
+        return ResponseEntity.ok(ApiResponse.res(HttpStatus.OK.value(), "소비 내역 조회 성공", result));
+    }
+}
