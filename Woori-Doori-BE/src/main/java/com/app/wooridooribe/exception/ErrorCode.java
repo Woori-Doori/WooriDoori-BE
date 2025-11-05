@@ -16,7 +16,6 @@ public enum ErrorCode {
     
     // 회원 관리 - 회원 가입
     DUPLICATE_LOGIN_ID(HttpStatus.CONFLICT, "ACCOUNT-005", "이미 사용 중인 이메일이 있습니다."),
-    INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "ACCOUNT-006", "비밀번호가 동일하지 않습니다."),
     REQUIRED_MISSING(HttpStatus.BAD_REQUEST, "ACCOUNT-007", "필수 요소가 입력되지 않았습니다."),
     INVALID_FORMAT(HttpStatus.BAD_REQUEST, "ACCOUNT-008", "형식에 맞지 않는 입력입니다."),
     SIGNIN_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "ACCOUNT-009", "회원가입에 실패하였습니다."),

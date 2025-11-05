@@ -45,23 +45,62 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginResponseDto join(JoinDto joinDto) {
-        // 이미 가입된 회원인지 확인
-        if (memberRepository.findByMemberId(joinDto.getMemberId()).isPresent()) {
+        try {
+            // ✅ 1. 필수 요소 누락 확인
+            if (joinDto.getMemberId() == null || joinDto.getPassword() == null ||
+                    joinDto.getName() == null || joinDto.getPhone() == null) {
+                throw new CustomException(ErrorCode.REQUIRED_MISSING);
+            }
+
+            // ✅ 2. 형식 검증 (이메일, 비밀번호 등)
+            if (!joinDto.getMemberId().matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$")) {
+                throw new CustomException(ErrorCode.INVALID_FORMAT);
+            }
+            if (joinDto.getPassword().length() < 8) {
+                throw new CustomException(ErrorCode.INVALID_FORMAT);
+            }
+
+            // ✅ 3. 중복 회원 확인
+            if (memberRepository.findByMemberId(joinDto.getMemberId()).isPresent()) {
+                throw new CustomException(ErrorCode.DUPLICATE_LOGIN_ID);
+            }
+
+            // ✅ 4. 비밀번호 암호화 및 회원 저장
+            String encodedPassword = passwordEncoder.encode(joinDto.getPassword());
+            Member member = joinDto.toEntity(encodedPassword);
+            memberRepository.save(member);
+
+            log.info("회원가입 완료: {}", joinDto.getMemberId());
+
+            // ✅ 5. 자동 로그인
+            return login(joinDto.getMemberId(), joinDto.getPassword());
+
+        } catch (CustomException e) {
+            throw e; // 이미 정의된 예외는 그대로 던짐
+        } catch (Exception e) {
+            log.error("회원가입 중 서버 오류 발생", e);
+            throw new CustomException(ErrorCode.SIGNIN_FAIL);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Boolean checkId(String memberId) {
+        if(memberId.isEmpty()) {
+            throw new CustomException(ErrorCode.REQUIRED_MISSING);
+        }
+        // 이미 존재하는 ID인 경우 예외 발생
+        if (memberRepository.existsByMemberId(memberId)) {
             throw new CustomException(ErrorCode.DUPLICATE_LOGIN_ID);
         }
-
-        // 비밀번호 암호화
-        String encodedPassword = passwordEncoder.encode(joinDto.getPassword());
-        
-        // DTO를 Entity로 변환하여 저장
-        Member member = joinDto.toEntity(encodedPassword);
-        memberRepository.save(member);
-        
-        log.info("회원가입 완료: {}", joinDto.getMemberId());
-
-        // 자동 로그인
-        return login(joinDto.getMemberId(), joinDto.getPassword());
+        // ✅ 2. 형식 검증 (이메일, 비밀번호 등)
+        if (!memberId.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$")) {
+            throw new CustomException(ErrorCode.INVALID_FORMAT);
+        }
+        // 사용 가능한 ID
+        return true;
     }
+
 
     @Override
     @Transactional
@@ -94,6 +133,10 @@ public class AuthServiceImpl implements AuthService {
             throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
         }
     }
+
+
+
+
 
     @Override
     @Transactional

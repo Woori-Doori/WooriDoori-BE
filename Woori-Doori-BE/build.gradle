@@ -33,6 +33,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
+    // Swagger/OpenAPI (SpringDoc)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
+
     // aws s3
     implementation 'software.amazon.awssdk:s3:2.20.47'
     implementation 'software.amazon.awssdk:auth:2.20.47'

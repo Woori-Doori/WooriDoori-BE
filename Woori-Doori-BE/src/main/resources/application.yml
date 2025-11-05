@@ -72,3 +72,14 @@ aws:
     secretKey: ${S3_SECRET_KEY}
     client: ${S3_CLIENT}
     region: ${S3_REGION}
+
+# Swagger/OpenAPI 설정
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json

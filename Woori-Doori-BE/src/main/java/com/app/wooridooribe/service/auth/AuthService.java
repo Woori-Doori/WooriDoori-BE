@@ -16,7 +16,8 @@ public interface AuthService {
     LoginResponseDto login(String memberId, String password);
 
     LoginResponseDto join(JoinDto joinDto);
-
+    
+    Boolean checkId(String memberId);
 
     TokenDto reissue(TokenRequestDto tokenRequestDto);
 
