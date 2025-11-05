@@ -131,7 +131,7 @@ jobs:
         id: push
         with:
           context: .
-          file: ./Dockerfile
+          file: .Woori-Doori-BE/Dockerfile
           push: true
           tags: |
             ${{ env.IMAGE }}:latest
