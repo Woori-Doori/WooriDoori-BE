@@ -301,10 +301,13 @@ jobs:
 
       - name: Verify signature before SSH deploy
         run: |
+          echo "workflow_ref = ${{ github.workflow_ref }}"
+          # 예: Woori-Doori/WooriDoori-BE/.github/workflows/gradle.yml@refs/heads/main
+      
           cosign verify \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/gradle-publish.yml@refs/heads/main" \
-            "${{ env.IMAGE }}"
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            "${{ env.IMAGE }}@${{ needs.build-and-push.outputs.image_digest }}"
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
