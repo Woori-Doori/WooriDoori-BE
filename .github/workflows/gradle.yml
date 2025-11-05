@@ -320,7 +320,32 @@ jobs:
           script: |
             OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
             IMAGE="ghcr.io/${OWNER_LC}/application"
+            ENV_PATH="/opt/woori/.env"
+            
+            # 1) 서버에 .env 생성 (GitHub Secrets에서 값 주입)
+            sudo mkdir -p /opt/woori
+            sudo bash -lc 'cat > '"$ENV_PATH"' <<EOF
+            S3_BUCKET=${{ secrets.S3_BUCKET }}
+            S3_ACCESS_KEY=${{ secrets.S3_ACCESS_KEY }}
+            S3_SECRET_KEY=${{ secrets.S3_SECRET_KEY }}
+            S3_CLIENT=${{ secrets.S3_CLIENT }}
+            S3_REGION=${{ secrets.S3_REGION }}
+            JWT=${{ secrets.JWT }}
+            DB_URL=${{ secrets.DB_URL }}
+            DB_USERNAME=${{ secrets.DB_USERNAME }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            REDIS_URL=${{ secrets.REDIS_URL }}
+            REDIS_PORT=${{ secrets.REDIS_PORT }}
+            EOF'
+            sudo chmod 600 "$ENV_PATH"
+            
+            # 2) 이미지 풀 & 재기동 (digest로 고정)
             docker login ghcr.io -u '${{ github.actor }}' -p '${{ secrets.G_TOKEN }}'
             docker pull "${IMAGE}@${{ needs.build-and-push.outputs.image_digest }}"
             docker rm -f app || true
-            docker run -d --name app -p 8080:8080 "${IMAGE}@${{ needs.build-and-push.outputs.image_digest }}"
+            
+            # 3) .env를 컨테이너에 주입 (마운트 + --env-file 둘 다 안전하게)
+            docker run -d --name app -p 8080:8080 \
+              --env-file "$ENV_PATH" \
+              -v "$ENV_PATH":/app/.env:ro \
+              "${IMAGE}@${{ needs.build-and-push.outputs.image_digest }}"
