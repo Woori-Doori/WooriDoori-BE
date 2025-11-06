@@ -61,7 +61,11 @@ public enum ErrorCode {
     DIARY_UPDATE_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "DIARY-003", "수정에 실패했습니다."),
     DIARY_TOKEN_REVOKED(HttpStatus.FORBIDDEN, "DIARY-004", "해당 일기는 삭제에 불가합니다."),
     DIARY_DELETE_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "DIARY-005", "삭제에 실패했습니다."),
-    
+    // 추가
+    DIARY_ISNULL(HttpStatus.NOT_FOUND, "DIARY-006", "해당 월의 소비 일기가 존재하지 않습니다."),
+    DIARY_INVALID_DATE(HttpStatus.BAD_REQUEST, "DIARY-007", "유효하지 않은 날짜 형식입니다."),
+    DIARY_DUPLICATE_DATE(HttpStatus.CONFLICT, "DIARY-008", "해당 날짜의 일기가 이미 존재합니다."),
+
     // 카드 - 카드 생성
     INVALID_CARD_NUMBER(HttpStatus.BAD_REQUEST, "CARD-001", "카드 번호가 옳지 않습니다."),
     CARD_EXPIRED(HttpStatus.BAD_REQUEST, "CARD-002", "카드 유효 기간이 만료되었습니다."),
