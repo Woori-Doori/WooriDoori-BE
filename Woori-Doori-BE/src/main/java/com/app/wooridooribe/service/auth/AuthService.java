@@ -20,7 +20,10 @@ public interface AuthService {
 
     Member findMemberByMemberNameAndPhone(MemberSearchIdDto memberSearchIdDto);
 
-
     void logout(String memberId);
+    
+    void resetPassword(ResetPasswordDto resetPasswordDto);
+    
+    void changePassword(ChangePasswordDto changePasswordDto);
 
 }

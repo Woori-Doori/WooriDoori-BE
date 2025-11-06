@@ -96,10 +96,119 @@ public class MailServiceIImpl implements MailService {
     }
     
     /**
-     * HTML 이메일 템플릿 생성
+     * 임시 비밀번호 발송
+     * @param email 수신자 이메일
+     * @param name 회원 이름
+     * @return 임시 비밀번호 (10자리)
+     */
+    @Override
+    public String sendTemporaryPassword(String email, String name) {
+        try {
+            // 1. 10자리 임시 비밀번호 생성 (대소문자 + 숫자 + 특수문자)
+            String tempPassword = generateTemporaryPassword();
+            
+            // 2. 이메일 발송
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            
+            helper.setFrom("ricky0130@naver.com");
+            helper.setTo(email);
+            helper.setSubject("🔐 우리두리 임시 비밀번호 안내");
+            helper.setText(createPasswordResetHtmlContent(name, tempPassword), true);  // true = HTML
+            
+            mailSender.send(mimeMessage);
+            log.info("임시 비밀번호 이메일 발송 완료: {}", email);
+            
+            return tempPassword;
+            
+        } catch (MessagingException e) {
+            log.error("임시 비밀번호 이메일 발송 실패: {}", email, e);
+            throw new CustomException(ErrorCode.SIGNIN_FAIL);
+        }
+    }
+    
+    /**
+     * 임시 비밀번호 생성 (10자리: 대문자 + 소문자 + 숫자 + 특수문자)
+     */
+    private String generateTemporaryPassword() {
+        String upperCase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        String lowerCase = "abcdefghijklmnopqrstuvwxyz";
+        String numbers = "0123456789";
+        String special = "!@#$%^&*";
+        String allChars = upperCase + lowerCase + numbers + special;
+        
+        Random random = new Random();
+        StringBuilder password = new StringBuilder();
+        
+        // 각 종류별로 최소 1개씩 포함
+        password.append(upperCase.charAt(random.nextInt(upperCase.length())));
+        password.append(lowerCase.charAt(random.nextInt(lowerCase.length())));
+        password.append(numbers.charAt(random.nextInt(numbers.length())));
+        password.append(special.charAt(random.nextInt(special.length())));
+        
+        // 나머지 6자리는 랜덤
+        for (int i = 0; i < 6; i++) {
+            password.append(allChars.charAt(random.nextInt(allChars.length())));
+        }
+        
+        // 문자 순서 섞기
+        char[] chars = password.toString().toCharArray();
+        for (int i = chars.length - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            char temp = chars[i];
+            chars[i] = chars[j];
+            chars[j] = temp;
+        }
+        
+        return new String(chars);
+    }
+    
+    /**
+     * HTML 이메일 템플릿 생성 (인증번호용)
      */
     private String createHtmlContent(String verificationCode) {
-        return """
+        return createEmailTemplate(
+            "👋 회원가입을 환영합니다! 👋",
+            "안녕하세요! 🎉<br>우리두리 회원가입을 위한 인증번호를 보내드립니다.<br>아래 인증번호를 입력하여 가입을 완료해주세요.",
+            "인증번호",
+            verificationCode,
+            "📋 인증번호를 클릭하여 복사해주세요",
+            new String[]{
+                "인증번호는 <strong style=\"color: #667eea;\">3분간 유효</strong>합니다.",
+                "인증번호를 타인에게 공유하지 마세요.",
+                "본인이 요청하지 않은 경우, 이 메일을 무시해주세요."
+            }
+        );
+    }
+    
+    /**
+     * HTML 이메일 템플릿 생성 (임시 비밀번호용)
+     */
+    private String createPasswordResetHtmlContent(String name, String tempPassword) {
+        return createEmailTemplate(
+            "🔐 임시 비밀번호가 발급되었습니다",
+            String.format("안녕하세요, <strong>%s</strong>님! 👋<br>비밀번호 재설정 요청에 따라 임시 비밀번호를 발급해드립니다.<br>아래 임시 비밀번호로 로그인 후 <strong style=\"color: #e53e3e;\">반드시 비밀번호를 변경</strong>해주세요.", name),
+            "임시 비밀번호",
+            tempPassword,
+            "🔑 임시 비밀번호를 클릭하여 복사해주세요",
+            new String[]{
+                "로그인 후 <strong style=\"color: #e53e3e;\">즉시 비밀번호를 변경</strong>해주세요.",
+                "임시 비밀번호를 타인에게 공유하지 마세요.",
+                "본인이 요청하지 않은 경우, 즉시 고객센터로 문의해주세요."
+            }
+        );
+    }
+    
+    /**
+     * 재사용 가능한 이메일 템플릿 생성
+     */
+    private String createEmailTemplate(String title, String description, String codeLabel, String code, String copyGuide, String[] warnings) {
+        StringBuilder warningsList = new StringBuilder();
+        for (String warning : warnings) {
+            warningsList.append(String.format("<li>%s</li>", warning));
+        }
+        
+        return String.format("""
                 <!DOCTYPE html>
                 <html lang="ko">
                 <head>
@@ -129,33 +238,31 @@ public class MailServiceIImpl implements MailService {
                                     <tr>
                                         <td style="padding: 40px 30px;">
                                             <h2 style="margin: 0 0 20px 0; color: #1a202c; font-size: 22px; font-weight: 600; text-align: center;">
-                                              👋 회원가입을 환영합니다! 👋
+                                                %s
                                             </h2>
                                             <p style="margin: 0 0 30px 0; color: #4a5568; font-size: 15px; line-height: 1.6; text-align: center;">
-                                                안녕하세요! 🎉<br>
-                                                우리두리 회원가입을 위한 인증번호를 보내드립니다.<br>
-                                                아래 인증번호를 입력하여 가입을 완료해주세요.
+                                                %s
                                             </p>
                                             
-                                            <!-- 인증번호 박스 -->
+                                            <!-- 코드/비밀번호 박스 -->
                                             <table width="100%%" cellpadding="0" cellspacing="0">
-                                            <tr>
-                                                <td align="center" style="padding: 30px 0;">
-                                                    <div style="background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); border-radius: 16px; padding: 35px 50px; display: inline-block; box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);">
-                                                        <p style="margin: 0 0 12px 0; color: #e0e7ff; font-size: 14px; font-weight: 500;">
-                                                            인증번호
-                                                        </p>
-                                                        <p style="margin: 0; color: #ffffff; font-size: 38px; font-weight: 700; letter-spacing: 10px; text-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: text; user-select: all; -webkit-user-select: all; -moz-user-select: all; -ms-user-select: all;">
+                                                <tr>
+                                                    <td align="center" style="padding: 30px 0;">
+                                                        <div style="background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); border-radius: 16px; padding: 35px 50px; display: inline-block; box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);">
+                                                            <p style="margin: 0 0 12px 0; color: #e0e7ff; font-size: 14px; font-weight: 500;">
+                                                                %s
+                                                            </p>
+                                                            <p style="margin: 0; color: #ffffff; font-size: 32px; font-weight: 700; letter-spacing: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: text; user-select: all; -webkit-user-select: all; -moz-user-select: all; -ms-user-select: all;">
+                                                                %s
+                                                            </p>
+                                                        </div>
+                                                        
+                                                        <!-- 복사 안내 -->
+                                                        <div style="margin-top: 15px; color: #718096; font-size: 13px;">
                                                             %s
-                                                        </p>
-                                                    </div>
-                                                    
-                                                    <!-- 복사 안내 -->
-                                                    <div style="margin-top: 15px; color: #718096; font-size: 13px;">
-                                                        📋 인증번호를 클릭하여 복사해주세요
-                                                    </div>
-                                                </td>
-                                            </tr>
+                                                        </div>
+                                                    </td>
+                                                </tr>
                                             </table>
                                             
                                             <!-- 안내 사항 -->
@@ -163,12 +270,10 @@ public class MailServiceIImpl implements MailService {
                                                 <tr>
                                                     <td>
                                                         <p style="margin: 0 0 15px 0; color: #2d3748; font-size: 14px; font-weight: 600;">
-                                                             유의사항
+                                                            ⚠️ 유의사항
                                                         </p>
                                                         <ul style="margin: 0; padding-left: 20px; color: #718096; font-size: 13px; line-height: 2;">
-                                                            <li> 인증번호는 <strong style="color: #667eea;">3분간 유효</strong>합니다.</li>
-                                                            <li> 인증번호를 타인에게 공유하지 마세요.</li>
-                                                            <li> 본인이 요청하지 않은 경우, 이 메일을 무시해주세요.</li>
+                                                            %s
                                                         </ul>
                                                     </td>
                                                 </tr>
@@ -194,7 +299,7 @@ public class MailServiceIImpl implements MailService {
                     </table>
                 </body>
                 </html>
-                """.formatted(verificationCode);
+                """, title, description, codeLabel, code, copyGuide, warningsList.toString());
     }
 
 }

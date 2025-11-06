@@ -7,6 +7,7 @@ import com.app.wooridooribe.entity.type.*;
 import com.app.wooridooribe.exception.*;
 import com.app.wooridooribe.jwt.*;
 import com.app.wooridooribe.repository.member.MemberRepository;
+import com.app.wooridooribe.service.mailService.MailService;
 import com.app.wooridooribe.service.token.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;  // Redis 기반으로 변경
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
+    private final MailService mailService;
 
     @Override
     @Transactional(readOnly = true)
@@ -205,6 +207,97 @@ public class AuthServiceImpl implements AuthService {
         // Redis에서 Refresh Token 삭제
         refreshTokenService.deleteRefreshToken(memberId);
         log.info("로그아웃 완료: {}", memberId);
+    }
+    
+    /**
+     * 비밀번호 재설정 (임시 비밀번호 발급)
+     */
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordDto resetPasswordDto) {
+        // 1. 필수 요소 검증
+        if (resetPasswordDto.getMemberId() == null || resetPasswordDto.getMemberId().isEmpty()) {
+            throw new CustomException(ErrorCode.REQUIRED_MISSING);
+        }
+        if (resetPasswordDto.getMemberName() == null || resetPasswordDto.getMemberName().isEmpty()) {
+            throw new CustomException(ErrorCode.REQUIRED_MISSING);
+        }
+        
+        // 2. 회원 조회 (이메일 + 이름으로 본인 확인)
+        Member member = memberRepository.findByMemberId(resetPasswordDto.getMemberId())
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        
+        // 3. 이름이 일치하는지 확인
+        if (!member.getMemberName().equals(resetPasswordDto.getMemberName())) {
+            log.error("비밀번호 재설정 실패: 이름 불일치 - ID: {}, 입력된 이름: {}, 실제 이름: {}", 
+                    resetPasswordDto.getMemberId(), resetPasswordDto.getMemberName(), member.getMemberName());
+            throw new CustomException(ErrorCode.USER_NOT_FOUND); // 보안상 동일한 에러 메시지
+        }
+        
+        // 4. 계정 상태 확인
+        if (member.getStatus() == StatusType.UNABLE) {
+            throw new CustomException(ErrorCode.ACCOUNT_SUSPENDED);
+        }
+        
+        // 5. 임시 비밀번호 생성 및 이메일 발송
+        String tempPassword = mailService.sendTemporaryPassword(
+                resetPasswordDto.getMemberId(), 
+                resetPasswordDto.getMemberName()
+        );
+        log.info("임시 비밀번호 발급 및 이메일 발송 완료: {}", resetPasswordDto.getMemberId());
+        
+        // 6. DB에 임시 비밀번호 저장 (암호화)
+        String encodedPassword = passwordEncoder.encode(tempPassword);
+        member.setPassword(encodedPassword);
+        memberRepository.save(member);
+        
+        log.info("비밀번호 재설정 완료: {}", resetPasswordDto.getMemberId());
+    }
+    
+    /**
+     * 비밀번호 변경 (기존 비밀번호 확인 후 변경)
+     */
+    @Override
+    @Transactional
+    public void changePassword(ChangePasswordDto changePasswordDto) {
+        // 1. 필수 요소 검증
+        if (changePasswordDto.getMemberId() == null || changePasswordDto.getMemberId().isEmpty()) {
+            throw new CustomException(ErrorCode.REQUIRED_MISSING);
+        }
+        if (changePasswordDto.getOldPassword() == null || changePasswordDto.getOldPassword().isEmpty()) {
+            throw new CustomException(ErrorCode.REQUIRED_MISSING);
+        }
+        if (changePasswordDto.getNewPassword() == null || changePasswordDto.getNewPassword().isEmpty()) {
+            throw new CustomException(ErrorCode.REQUIRED_MISSING);
+        }
+        
+        // 2. 회원 조회
+        Member member = memberRepository.findByMemberId(changePasswordDto.getMemberId())
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        
+        // 3. 계정 상태 확인
+        if (member.getStatus() == StatusType.UNABLE) {
+            throw new CustomException(ErrorCode.ACCOUNT_SUSPENDED);
+        }
+        
+        // 4. 기존 비밀번호 확인
+        if (!passwordEncoder.matches(changePasswordDto.getOldPassword(), member.getPassword())) {
+            log.error("비밀번호 변경 실패: 기존 비밀번호 불일치 - ID: {}", changePasswordDto.getMemberId());
+            throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
+        }
+        
+        // 5. 새 비밀번호와 기존 비밀번호가 같은지 확인
+        if (changePasswordDto.getOldPassword().equals(changePasswordDto.getNewPassword())) {
+            log.error("비밀번호 변경 실패: 새 비밀번호가 기존 비밀번호와 동일 - ID: {}", changePasswordDto.getMemberId());
+            throw new CustomException(ErrorCode.SAME_PASSWORD);
+        }
+        
+        // 6. 새 비밀번호 암호화 및 저장
+        String encodedNewPassword = passwordEncoder.encode(changePasswordDto.getNewPassword());
+        member.setPassword(encodedNewPassword);
+        memberRepository.save(member);
+        
+        log.info("비밀번호 변경 완료: {}", changePasswordDto.getMemberId());
     }
 
 }

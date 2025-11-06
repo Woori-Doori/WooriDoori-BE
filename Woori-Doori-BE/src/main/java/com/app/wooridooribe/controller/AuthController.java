@@ -121,6 +121,35 @@ public class AuthController {
         
         return ResponseEntity.ok(ApiResponse.res(200, "로그아웃되었습니다"));
     }
-
-
+    
+    @Operation(summary = "비밀번호 재설정 (임시 비밀번호 발급)", description = "이름과 이메일로 본인 확인 후 임시 비밀번호를 이메일로 발송합니다")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "임시 비밀번호 발송 성공")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "회원 정보를 찾을 수 없습니다")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "비활성화된 계정입니다")
+    @PatchMapping("genPw")
+    public ResponseEntity<ApiResponse<Void>> generateTemporaryPassword(
+            @Parameter(description = "비밀번호 재설정 요청 정보 (이메일 + 이름)", required = true)
+            @RequestBody ResetPasswordDto resetPasswordDto) {
+        
+        authService.resetPassword(resetPasswordDto);
+        
+        return ResponseEntity.ok(ApiResponse.res(200, "임시 비밀번호가 이메일로 발송되었습니다. 로그인 후 비밀번호를 변경해주세요."));
+    }
+    
+    @Operation(summary = "비밀번호 변경", description = "기존 비밀번호를 확인하고 새 비밀번호로 변경합니다")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "비밀번호 변경 성공")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "기존 비밀번호가 일치하지 않습니다")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "회원 정보를 찾을 수 없습니다")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "새 비밀번호가 기존 비밀번호와 동일합니다")
+    @PatchMapping("resetPw")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @Parameter(description = "비밀번호 변경 요청 정보 (이메일 + 기존 비밀번호 + 새 비밀번호)", required = true)
+            @RequestBody ChangePasswordDto changePasswordDto) {
+        
+        authService.changePassword(changePasswordDto);
+        
+        return ResponseEntity.ok(ApiResponse.res(200, "비밀번호가 성공적으로 변경되었습니다."));
+    }
+    
+  
 }

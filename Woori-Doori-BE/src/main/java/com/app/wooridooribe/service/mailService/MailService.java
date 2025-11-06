@@ -16,4 +16,12 @@ public interface MailService {
      * @return 일치 여부
      */
     boolean verifyCode(String email, String code);
+    
+    /**
+     * 임시 비밀번호 발송
+     * @param email 수신자 이메일
+     * @param name 회원 이름
+     * @return 임시 비밀번호
+     */
+    String sendTemporaryPassword(String email, String name);
 }

@@ -40,6 +40,7 @@ public enum ErrorCode {
     TEMP_PASSWORD_GEN_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "ACCOUNT-015", "임시 비밀번호 생성에 실패했습니다."),
     TEMP_PASSWORD_INCORRECT(HttpStatus.INTERNAL_SERVER_ERROR, "ACCOUNT-016", "부여한 임시 비밀번호와 일치하지 않습니다."),
     UPDATE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "ACCOUNT-017", "임시 비밀번호 저장이 실패했습니다."),
+    SAME_PASSWORD(HttpStatus.BAD_REQUEST, "ACCOUNT-020", "새 비밀번호가 기존 비밀번호와 동일합니다."),
     
     // 회원 관리 - 로그아웃
     DATA_ACCESS_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "ACCOUNT-018", "로그아웃 처리가 불가합니다."),
