@@ -8,6 +8,13 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum ErrorCode {
     
+    // 공통 에러
+    NO_TOKEN(HttpStatus.UNAUTHORIZED, "COMMON-001", "로그인을 해주세요"),
+    TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "COMMON-002", "토큰값이 만료되었습니다"),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "COMMON-003", "토큰이 유효하지않습니다"),
+    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON-004", "서버가 점검중입니다"),
+    INVALID_MEMBER(HttpStatus.FORBIDDEN, "COMMON-005", "비활성화된 계정입니다"),
+    
     // 회원 관리 - 본인 인증
     AUTH_FAIL(HttpStatus.BAD_REQUEST, "ACCOUNT-001", "인증 번호가 일치하지 않습니다."),
     TIME_OUT(HttpStatus.REQUEST_TIMEOUT, "ACCOUNT-002", "인증 시간이 초과되었습니다. 다시 인증을 시도해주세요."),
@@ -68,8 +75,13 @@ public enum ErrorCode {
     // 목표
     GOAL_INVALIDNUM(HttpStatus.BAD_REQUEST, "GOAL-002", "목표치가 올바르지 않습니다."),
     GOAL_ISNOTYOURS(HttpStatus.FORBIDDEN, "GOAL-003", "해당 달성도는 조회가 불가합니다."),
-    GOAL_ISNULL(HttpStatus.NOT_FOUND, "GOAL-004", "해당 달성도는 존재하지 않습니다.");
-    
+    GOAL_ISNULL(HttpStatus.NOT_FOUND, "GOAL-004", "해당 달성도는 존재하지 않습니다."),
+
+    // 메일
+    MAIL_NOTFOUND(HttpStatus.BAD_REQUEST, "MAIL-001","이메일을 찾을 수 없습니다");
+
+
+
     private final HttpStatus statusCode;
     private final String errorCode;
     private final String errorMsg;

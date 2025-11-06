@@ -2,15 +2,13 @@ package com.app.wooridooribe.controller;
 
 
 import com.app.wooridooribe.controller.dto.*;
+import com.app.wooridooribe.entity.Member;
 import com.app.wooridooribe.jwt.MemberDetail;
 import com.app.wooridooribe.service.auth.AuthService;
+import com.app.wooridooribe.service.mailService.MailService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -19,17 +17,18 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "인증", description = "회원가입, 로그인, 토큰 관련 API")
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/auth/*")
 @RequiredArgsConstructor
 @Slf4j
 public class AuthController {
 
     private final AuthService authService;
+    private final MailService mailService;
 
     @Operation(summary = "회원가입", description = "새로운 회원을 등록하고 자동으로 로그인합니다")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "회원가입 성공")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "이미 존재하는 이메일")
-    @PostMapping("/join")
+    @PostMapping("join")
     public ResponseEntity<ApiResponse<LoginResponseDto>> join(@RequestBody JoinDto joinDto) {
         LoginResponseDto result = authService.join(joinDto);
         return ResponseEntity.ok(ApiResponse.res(200, "회원가입에 성공했습니다", result));
@@ -39,7 +38,7 @@ public class AuthController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그인 성공")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "비밀번호가 틀립니다")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "아이디가 존재하지 않습니다")
-    @PostMapping("/login")
+    @PostMapping("login")
     public ResponseEntity<ApiResponse<LoginResponseDto>> login(@RequestBody LoginDto loginDto) {
         LoginResponseDto result = authService.login(loginDto.getMemberId(), loginDto.getPassword());
         return ResponseEntity.ok(ApiResponse.res(200, "SUCCESS", result));
@@ -48,8 +47,8 @@ public class AuthController {
     @Operation(summary = "ID 중복 체크", description = "회원가입 전 이메일 중복 여부를 확인합니다")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "사용 가능한 이메일")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "이미 사용 중인 이메일")
-    @GetMapping("/idCheck")
-    public ResponseEntity<ApiResponse<Boolean>> idCheck(
+    @GetMapping("idCheck")
+    public ResponseEntity<ApiResponse<Boolean>> getMemberIdCheck(
             @Parameter(description = "중복 체크할 이메일", required = true)
             @RequestParam String memberId) {
         boolean isAvailable = authService.checkId(memberId);
@@ -59,7 +58,7 @@ public class AuthController {
     @Operation(summary = "토큰 재발급", description = "Refresh Token으로 새로운 Access Token을 발급받습니다")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "토큰 재발급 성공")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "유효하지 않은 토큰")
-    @PostMapping("/reissue")
+    @PostMapping("reissue")
     public ResponseEntity<TokenDto> reissue(@RequestBody TokenRequestDto tokenRequestDto) {
         return ResponseEntity.ok(authService.reissue(tokenRequestDto));
     }
@@ -67,16 +66,62 @@ public class AuthController {
     @Operation(summary = "현재 로그인한 사용자 정보", description = "JWT 토큰으로 현재 로그인한 사용자의 정보를 조회합니다")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패")
-    @GetMapping("/user")
-    public ResponseEntity<MemberDto> getUserDetails(Authentication authentication) {
+    @GetMapping("user")
+    public ResponseEntity<ApiResponse<MemberDto>> getUserDetails(Authentication authentication) {
+
         MemberDetail principal = (MemberDetail) authentication.getPrincipal();
         
         MemberDto memberDto = MemberDto.builder()
                 .memberId(principal.getUsername())
                 .name(principal.getName())
                 .phone(principal.getMember().getPhone())
+                .birthDate(principal.getMember().getBirthDate())
+                .birthBack(principal.getMember().getBirthBack())
                 .build();
         
-        return ResponseEntity.ok(memberDto);
+        return ResponseEntity.ok(ApiResponse.res(200,"사용자의 정보를 불러왔습니다",memberDto));
     }
+
+    @GetMapping("searchId")
+    public ResponseEntity<String> getMemberIdByNameAndPhone(@Parameter MemberSearchIdDto memberSearchIdDto){
+        Member foundMember=authService.findMemberByMemberNameAndPhone(memberSearchIdDto);
+        return ResponseEntity.ok(foundMember.getMemberId());
+    }
+
+    @Operation(summary = "이메일 인증번호 발송", description = "회원가입을 위한 인증번호를 이메일로 발송합니다")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "인증번호 발송 성공")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "이메일 발송 실패")
+    @PostMapping("send-verification")
+    public ResponseEntity<ApiResponse<Void>> sendVerificationCode(
+            @Parameter(description = "인증번호를 받을 이메일", required = true)
+            @RequestBody EmailVerificationDto emailDto) {
+        
+        mailService.sendVerificationCode(emailDto.getEmail());
+        return ResponseEntity.ok(ApiResponse.res(200, "인증번호가 발송되었습니다. 이메일을 확인해주세요."));
+    }
+    
+    @Operation(summary = "이메일 인증번호 확인", description = "사용자가 입력한 인증번호를 검증합니다")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "인증 성공")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "인증번호 불일치")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "408", description = "인증 시간 초과")
+    @PostMapping("verify-email")
+    public ResponseEntity<ApiResponse<Boolean>> verifyEmailCode(@RequestBody EmailVerificationDto emailDto) {
+        
+        boolean verified = mailService.verifyCode(emailDto.getEmail(), emailDto.getCode());
+        return ResponseEntity.ok(ApiResponse.res(200, "이메일 인증이 완료되었습니다", verified));
+    }
+    
+    @Operation(summary = "로그아웃", description = "Refresh Token을 삭제하여 로그아웃 처리합니다")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그아웃 성공")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패")
+    @PostMapping("logout")
+    public ResponseEntity<ApiResponse<Void>> logout(Authentication authentication) {
+        
+        MemberDetail principal = (MemberDetail) authentication.getPrincipal();
+        authService.logout(principal.getUsername());
+        
+        return ResponseEntity.ok(ApiResponse.res(200, "로그아웃되었습니다"));
+    }
+
+
 }

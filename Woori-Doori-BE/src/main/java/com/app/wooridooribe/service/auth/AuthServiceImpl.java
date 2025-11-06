@@ -1,25 +1,19 @@
 package com.app.wooridooribe.service.auth;
 
 
-import com.app.wooridooribe.controller.dto.JoinDto;
-import com.app.wooridooribe.controller.dto.LoginResponseDto;
-import com.app.wooridooribe.controller.dto.TokenDto;
-import com.app.wooridooribe.controller.dto.TokenRequestDto;
-import com.app.wooridooribe.entity.Member;
-import com.app.wooridooribe.entity.RefreshToken;
-import com.app.wooridooribe.entity.type.Authority;
-import com.app.wooridooribe.entity.type.StatusType;
-import com.app.wooridooribe.exception.CustomException;
-import com.app.wooridooribe.exception.ErrorCode;
-import com.app.wooridooribe.jwt.MemberDetail;
-import com.app.wooridooribe.jwt.TokenProvider;
+import com.app.wooridooribe.controller.dto.*;
+import com.app.wooridooribe.entity.*;
+import com.app.wooridooribe.entity.type.*;
+import com.app.wooridooribe.exception.*;
+import com.app.wooridooribe.jwt.*;
 import com.app.wooridooribe.repository.member.MemberRepository;
-import com.app.wooridooribe.repository.refreshToken.RefreshTokenRepository;
+import com.app.wooridooribe.service.token.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,7 +26,7 @@ import java.util.Optional;
 public class AuthServiceImpl implements AuthService {
     private final MemberRepository memberRepository;
     private final TokenProvider tokenProvider;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RefreshTokenService refreshTokenService;  // Redis 기반으로 변경
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
 
@@ -47,13 +41,13 @@ public class AuthServiceImpl implements AuthService {
     public LoginResponseDto join(JoinDto joinDto) {
         try {
             // ✅ 1. 필수 요소 누락 확인
-            if (joinDto.getMemberId() == null || joinDto.getPassword() == null ||
-                    joinDto.getName() == null || joinDto.getPhone() == null) {
+            if (joinDto.getId().isEmpty()|| joinDto.getPassword().isEmpty()||
+                    joinDto.getName().isEmpty()|| joinDto.getPhone().isEmpty()) {
                 throw new CustomException(ErrorCode.REQUIRED_MISSING);
             }
 
             // ✅ 2. 형식 검증 (이메일, 비밀번호 등)
-            if (!joinDto.getMemberId().matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$")) {
+            if (!joinDto.getId().matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$")) {
                 throw new CustomException(ErrorCode.INVALID_FORMAT);
             }
             if (joinDto.getPassword().length() < 8) {
@@ -61,7 +55,7 @@ public class AuthServiceImpl implements AuthService {
             }
 
             // ✅ 3. 중복 회원 확인
-            if (memberRepository.findByMemberId(joinDto.getMemberId()).isPresent()) {
+            if (memberRepository.findByMemberId(joinDto.getId()).isPresent()) {
                 throw new CustomException(ErrorCode.DUPLICATE_LOGIN_ID);
             }
 
@@ -70,10 +64,10 @@ public class AuthServiceImpl implements AuthService {
             Member member = joinDto.toEntity(encodedPassword);
             memberRepository.save(member);
 
-            log.info("회원가입 완료: {}", joinDto.getMemberId());
+            log.info("회원가입 완료: {}", joinDto.getId());
 
             // ✅ 5. 자동 로그인
-            return login(joinDto.getMemberId(), joinDto.getPassword());
+            return login(joinDto.getId(), joinDto.getPassword());
 
         } catch (CustomException e) {
             throw e; // 이미 정의된 예외는 그대로 던짐
@@ -86,16 +80,20 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public Boolean checkId(String memberId) {
+
+        Optional<Member> foundMember = memberRepository.findByMemberId(memberId);
+
+        // 1. 비어있을 시
         if(memberId.isEmpty()) {
             throw new CustomException(ErrorCode.REQUIRED_MISSING);
         }
-        // 이미 존재하는 ID인 경우 예외 발생
-        if (memberRepository.existsByMemberId(memberId)) {
-            throw new CustomException(ErrorCode.DUPLICATE_LOGIN_ID);
-        }
-        // ✅ 2. 형식 검증 (이메일, 비밀번호 등)
+        // 2. 형식 검증 (이메일, 비밀번호 등)
         if (!memberId.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$")) {
             throw new CustomException(ErrorCode.INVALID_FORMAT);
+        }
+        // 3. 이미 존재하는 ID인 경우 예외 발생
+        if (foundMember.isPresent()) {
+            throw new CustomException(ErrorCode.DUPLICATE_LOGIN_ID);
         }
         // 사용 가능한 ID
         return true;
@@ -118,8 +116,8 @@ public class AuthServiceImpl implements AuthService {
             MemberDetail memberDetail = (MemberDetail) authentication.getPrincipal();
             TokenDto tokenDto = tokenProvider.generateTokenDto(memberDetail);
 
-            // 4. RefreshToken 저장
-            saveRefreshToken(memberId, tokenDto.getRefreshToken());
+            // 4. RefreshToken Redis에 저장
+            refreshTokenService.saveRefreshToken(memberId, tokenDto.getRefreshToken());
 
             // 5. LoginResponseDto 생성
             return LoginResponseDto.builder()
@@ -127,10 +125,24 @@ public class AuthServiceImpl implements AuthService {
                     .token(tokenDto.getAccessToken())
                     .build();
                     
-        } catch (org.springframework.security.core.userdetails.UsernameNotFoundException e) {
-            throw new CustomException(ErrorCode.USER_NOT_FOUND);
         } catch (org.springframework.security.authentication.BadCredentialsException e) {
+            // 비밀번호가 틀린 경우
+            log.error("로그인 실패 - 비밀번호 불일치: {}", memberId);
             throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
+        } catch (org.springframework.security.core.userdetails.UsernameNotFoundException e) {
+            // 사용자를 찾을 수 없는 경우
+            log.error("로그인 실패 - 사용자 없음: {}", memberId);
+            throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        } catch (org.springframework.security.authentication.InternalAuthenticationServiceException e) {
+            // MemberDetailService에서 던진 예외가 이 예외로 감싸질 수 있음
+            if (e.getCause() instanceof UsernameNotFoundException) {
+                log.error("로그인 실패 - 사용자 없음 (Internal): {}", memberId);
+                throw new CustomException(ErrorCode.USER_NOT_FOUND);
+            }
+            throw e;
+        } catch (CustomException e) {
+            // 계정 정지 등 이미 정의된 CustomException
+            throw e;
         }
     }
 
@@ -141,39 +153,57 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public TokenDto reissue(TokenRequestDto tokenRequestDto) {
-        // 1. Refresh Token 검증
-        if (!tokenProvider.validateToken(tokenRequestDto.getRefreshToken())) {
-            throw new RuntimeException("Refresh Token이 유효하지 않습니다.");
+        // 1. Refresh Token null/empty 체크
+        if (tokenRequestDto.getRefreshToken() == null || tokenRequestDto.getRefreshToken().isEmpty()) {
+            throw new CustomException(ErrorCode.NO_TOKEN);
         }
-
-        // 2. Access Token에서 Member ID 가져오기
-        Authentication authentication = tokenProvider.getAuthentication(tokenRequestDto.getAccessToken());
         
-        // 3. 저장소에서 Member ID를 기반으로 Refresh Token 값 가져옴
-        RefreshToken refreshToken = refreshTokenRepository.findByKey(authentication.getName())
-                .orElseThrow(() -> new RuntimeException("로그아웃 된 사용자입니다."));
+        // 2. Refresh Token 검증 (만료, 서명 등)
+        tokenProvider.validateToken(tokenRequestDto.getRefreshToken());
 
-        // 4. Refresh Token 일치하는지 검사
-        if (!refreshToken.getValue().equals(tokenRequestDto.getRefreshToken())) {
-            throw new RuntimeException("토큰의 유저 정보가 일치하지 않습니다.");
+        // 3. Access Token에서 Member ID 가져오기
+        Authentication authentication = tokenProvider.getAuthentication(tokenRequestDto.getAccessToken());
+        String memberId = authentication.getName();
+        
+        // 4. Redis에서 저장된 Refresh Token 조회
+        String savedRefreshToken = refreshTokenService.getRefreshToken(memberId)
+                .orElseThrow(() -> new CustomException(ErrorCode.REFRESH_TOKEN_REVOKED));
+
+        // 5. Refresh Token 일치하는지 검사
+        if (!savedRefreshToken.equals(tokenRequestDto.getRefreshToken())) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
         }
 
-        // 5. 새로운 토큰 생성
+        // 6. 새로운 토큰 생성
         MemberDetail memberDetail = (MemberDetail) authentication.getPrincipal();
         TokenDto tokenDto = tokenProvider.generateTokenDto(memberDetail);
 
-        // 6. 저장소 정보 업데이트
-        RefreshToken newRefreshToken = refreshToken.updateValue(tokenDto.getRefreshToken());
-        refreshTokenRepository.save(newRefreshToken);
+        // 7. Redis에 새로운 Refresh Token 저장
+        refreshTokenService.saveRefreshToken(memberId, tokenDto.getRefreshToken());
 
         return tokenDto;
     }
 
-    private void saveRefreshToken(String memberId, String refreshTokenValue) {
-        RefreshToken refreshToken = RefreshToken.builder()
-                .key(memberId)
-                .value(refreshTokenValue)
-                .build();
-        refreshTokenRepository.save(refreshToken);
+    @Override
+    public Member findMemberByMemberNameAndPhone(MemberSearchIdDto memberSearchIdDto) {
+        if(memberSearchIdDto.getName().isEmpty() || memberSearchIdDto.getPhone().isEmpty()) {
+            throw new CustomException(ErrorCode.INVALID_FORMAT);
+        }
+        Optional<Member> member =  memberRepository.findByMemberNameAndPhone(memberSearchIdDto.getName(),memberSearchIdDto.getPhone());
+        if(member.isEmpty()) {
+            throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        }
+        if(member.get().getStatus() == StatusType.UNABLE) {
+            throw new CustomException(ErrorCode.ACCOUNT_SUSPENDED);
+        }
+        return member.get();
     }
+    
+    @Override
+    public void logout(String memberId) {
+        // Redis에서 Refresh Token 삭제
+        refreshTokenService.deleteRefreshToken(memberId);
+        log.info("로그아웃 완료: {}", memberId);
+    }
+
 }

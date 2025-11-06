@@ -17,8 +17,7 @@ import lombok.*;
 public class JoinDto {
     
     @Schema(description = "회원 ID (이메일)", example = "test@example.com")
-    @JsonProperty("id")
-    private String memberId;
+    private String id;
     
     @Schema(description = "비밀번호", example = "password123")
     private String password;
@@ -35,13 +34,9 @@ public class JoinDto {
     @Schema(description = "생년월일 뒷자리", example = "1234567")
     private String birthBack;
     
-    /**
-     * DTO를 Entity로 변환
-     * 비밀번호는 암호화된 상태로 넘겨받음
-     */
     public Member toEntity(String encodedPassword) {
         return Member.builder()
-                .memberId(this.memberId)
+                .memberId(this.id)
                 .password(encodedPassword)
                 .memberName(this.name)
                 .phone(this.phone)
