@@ -13,4 +13,8 @@ public interface CardHistoryQueryDsl {
     void updateIncludeTotal(Long historyId, boolean includeTotal);
 
     void updateCategory(Long historyId, String newCategory);
+
+    void updateDutchpay(Long historyId, int count);
+
+    void updatePrice(Long historyId, int price);
 }

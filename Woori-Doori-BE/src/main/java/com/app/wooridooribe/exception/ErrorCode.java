@@ -45,10 +45,15 @@ public enum ErrorCode {
     HISTORY_ISNOTYOURS(HttpStatus.FORBIDDEN, "HISTORY-003", "해당 소비 내역은 수정이 불가합니다."),
     HISTORY_UPDATE_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "HISTORY-004", "수정에 실패했습니다."),
     HISTORY_INVALID_DATE(HttpStatus.BAD_REQUEST, "HISTORY-005", "유효하지 않은 연/월 값입니다."),
-    //추가
+    // 추가
     HISTORY_INVALID_CATEGORY(HttpStatus.BAD_REQUEST, "HISTORY-006", "유효하지 않은 카테고리 값입니다."),
     HISTORY_INCLUDE_UPDATE_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "HISTORY-007", "지출 합계 포함 여부 수정에 실패했습니다."),
     HISTORY_CATEGORY_UPDATE_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "HISTORY-008", "카테고리 수정에 실패했습니다."),
+    HISTORY_INVALID_DUTCHPAY(HttpStatus.BAD_REQUEST, "HISTORY-009", "유효하지 않은 더치페이 인원 수입니다."),
+    HISTORY_DUTCHPAY_UPDATE_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "HISTORY-010", "더치페이 인원 수정에 실패했습니다."),
+    HISTORY_PRICE_UPDATE_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "HISTORY-011", "금액 수정에 실패했습니다."),
+    HISTORY_INVALID_PRICE(HttpStatus.BAD_REQUEST, "HISTORY-012", "유효하지 않은 금액 값입니다."),
+
 
     // 소비 일기
     DIARY_INSERT_INVALID(HttpStatus.BAD_REQUEST, "DIARY-001", "일기가 너무 깁니다."),

@@ -73,4 +73,41 @@ public class SpendingController {
                 ApiResponse.res(HttpStatus.OK.value(), "카테고리 수정 성공", result)
         );
     }
+
+    @PatchMapping("/{historyId}/dutchpay")
+    public ResponseEntity<?> updateDutchpay(
+            @PathVariable Long historyId,
+            @RequestBody Map<String, Integer> request
+    ) {
+        int count = request.get("count");
+        spendingService.updateDutchpay(historyId, count);
+
+        Map<String, Object> result = Map.of(
+                "historyId", historyId,
+                "newDutchpayCount", count
+        );
+
+        return ResponseEntity.ok(
+                ApiResponse.res(HttpStatus.OK.value(), "더치페이 인원 수정 성공", result)
+        );
+    }
+
+    @PatchMapping("/{historyId}/price")
+    public ResponseEntity<?> updatePrice(
+            @PathVariable Long historyId,
+            @RequestBody Map<String, Integer> request
+    ) {
+        int price = request.get("price");
+        spendingService.updatePrice(historyId, price);
+
+        Map<String, Object> result = Map.of(
+                "historyId", historyId,
+                "newPrice", price
+        );
+
+        return ResponseEntity.ok(
+                ApiResponse.res(HttpStatus.OK.value(), "결제 금액 수정 성공", result)
+        );
+    }
+
 }

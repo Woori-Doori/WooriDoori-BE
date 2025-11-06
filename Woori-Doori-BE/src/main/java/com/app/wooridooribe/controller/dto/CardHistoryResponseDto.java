@@ -15,9 +15,12 @@ public class CardHistoryResponseDto {
     private String historyCategory;
     private Integer historyPrice;
     private Integer historyDutchpay;
+    private Integer perPersonAmount;
     private String includeTotal;
 
     public static CardHistoryResponseDto from(CardHistory entity) {
+        int perPersonAmount = entity.getHistoryPrice() / entity.getHistoryDutchpay();
+
         return CardHistoryResponseDto.builder()
                 .id(entity.getId())
                 .date(entity.getHistoryDate())
@@ -25,6 +28,7 @@ public class CardHistoryResponseDto {
                 .historyCategory(entity.getHistoryCategory())
                 .historyPrice(entity.getHistoryPrice())
                 .historyDutchpay(entity.getHistoryDutchpay())
+                .perPersonAmount(perPersonAmount)
                 .includeTotal(entity.getHistoryIncludeTotal())
                 .build();
     }

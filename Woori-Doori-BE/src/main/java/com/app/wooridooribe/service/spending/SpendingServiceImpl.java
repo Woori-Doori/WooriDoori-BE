@@ -36,8 +36,12 @@ public class SpendingServiceImpl implements SpendingService {
                 .map(CardHistoryResponseDto::from)
                 .toList();
 
+        int totalAmount = spendingList.stream()
+                .mapToInt(CardHistoryResponseDto::getPerPersonAmount)
+                .sum();
+
         return Map.of(
-                "totalAmount", summary.getTotalAmount(),
+                "totalAmount", totalAmount,
                 "spendings", spendingList
         );
     }
@@ -90,6 +94,44 @@ public class SpendingServiceImpl implements SpendingService {
             throw e;
         } catch (Exception e) {
             throw new CustomException(ErrorCode.HISTORY_CATEGORY_UPDATE_FAIL, ErrorCode.HISTORY_CATEGORY_UPDATE_FAIL.getErrorMsg());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void updateDutchpay(Long historyId, int count) {
+        var historyOpt = cardHistoryRepository.findById(historyId);
+        if (historyOpt.isEmpty()) {
+            throw new CustomException(ErrorCode.HISTORY_ISNULL);
+        }
+
+        if (count < 1 || count > 10) {
+            throw new CustomException(ErrorCode.HISTORY_INVALID_DUTCHPAY);
+        }
+
+        try {
+            cardHistoryRepository.updateDutchpay(historyId, count);
+        } catch (Exception e) {
+            throw new CustomException(ErrorCode.HISTORY_DUTCHPAY_UPDATE_FAIL);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void updatePrice(Long historyId, int price) {
+        var historyOpt = cardHistoryRepository.findById(historyId);
+        if (historyOpt.isEmpty()) {
+            throw new CustomException(ErrorCode.HISTORY_ISNULL);
+        }
+
+        if (price <= 0) {
+            throw new CustomException(ErrorCode.HISTORY_INVALID_PRICE);
+        }
+
+        try {
+            cardHistoryRepository.updatePrice(historyId, price);
+        } catch (Exception e) {
+            throw new CustomException(ErrorCode.HISTORY_PRICE_UPDATE_FAIL);
         }
     }
 }

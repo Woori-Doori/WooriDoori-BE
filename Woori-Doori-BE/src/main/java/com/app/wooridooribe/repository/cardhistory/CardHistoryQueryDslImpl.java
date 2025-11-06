@@ -88,5 +88,30 @@ public class CardHistoryQueryDslImpl implements CardHistoryQueryDsl {
                 .where(ch.id.eq(historyId))
                 .execute();
     }
+
+    @Override
+    @Transactional
+    public void updateDutchpay(Long historyId, int count) {
+        QCardHistory ch = QCardHistory.cardHistory;
+
+        queryFactory
+                .update(ch)
+                .set(ch.historyDutchpay, count)
+                .where(ch.id.eq(historyId))
+                .execute();
+    }
+
+    @Override
+    @Transactional
+    public void updatePrice(Long historyId, int price) {
+        QCardHistory ch = QCardHistory.cardHistory;
+
+        queryFactory
+                .update(ch)
+                .set(ch.historyPrice, price)
+                .where(ch.id.eq(historyId))
+                .execute();
+    }
+
 }
 
