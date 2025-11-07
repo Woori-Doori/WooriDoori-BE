@@ -34,19 +34,21 @@ public class SpendingServiceImpl implements SpendingService {
         CardHistorySummaryResponseDto summary = cardHistoryRepository
                 .findByUserAndMonthAndStatus(memberId, year, month, StatusType.ABLE);
 
-        if (summary.getHistories().isEmpty()) {
+        List<CardHistory> histories = summary.getHistories();
+        if (histories == null || histories.isEmpty()) {
             throw new CustomException(ErrorCode.HISTORY_ISNULL);
         }
 
-        List<CardHistoryResponseDto> spendingList = summary.getHistories().stream()
+        List<CardHistoryResponseDto> spendingList = histories.stream()
                 .map(CardHistoryResponseDto::from)
                 .toList();
 
-        int totalAmount = spendingList.stream()
-                .mapToInt(CardHistoryResponseDto::getPerPersonAmount)
-                .sum();
+        // perPersonAmount를 보여주고 싶다면, total은 DB 기준으로
+        int totalAmount = summary.getTotalAmount();
 
         return Map.of(
+                "year", year,
+                "month", month,
                 "totalAmount", totalAmount,
                 "spendings", spendingList
         );
