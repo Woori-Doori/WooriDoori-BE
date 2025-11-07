@@ -346,8 +346,11 @@ jobs:
             ENV_EOF
             
             sudo mv "$TMP_ENV" "$ENV_PATH"
+            # (기존) /run/woori/.env 생성 이후 권한
             sudo chown root:root "$ENV_PATH"
-            sudo chmod 600 "$ENV_PATH"
+            sudo chmod 644 "$ENV_PATH"   # ← 600 → 644로 변경 (world-readable)
+
+
             
             # 2) 컨테이너 재배포 (Dotenv가 /app/.env 를 찾으므로 바인드 마운트)
             docker login ghcr.io -u '${{ github.actor }}' -p '${{ secrets.G_TOKEN }}'
