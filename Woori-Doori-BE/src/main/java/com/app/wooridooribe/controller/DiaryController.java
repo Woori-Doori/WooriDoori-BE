@@ -1,6 +1,8 @@
 package com.app.wooridooribe.controller;
 
 import com.app.wooridooribe.controller.dto.ApiResponse;
+import com.app.wooridooribe.controller.dto.DiaryCreateRequestDto;
+import com.app.wooridooribe.controller.dto.DiaryCreateResponseDto;
 import com.app.wooridooribe.controller.dto.DiaryResponseDto;
 import com.app.wooridooribe.jwt.MemberDetail;
 import com.app.wooridooribe.service.diary.DiaryService;
@@ -49,5 +51,17 @@ public class DiaryController {
         return ResponseEntity.ok(
                 ApiResponse.res(HttpStatus.OK.value(), "소비 일기 상세 조회 성공", result)
         );
+    }
+
+    @PostMapping("InsertDiary")
+    public ResponseEntity<ApiResponse<DiaryCreateResponseDto>> createDiary(
+            Authentication authentication,
+            @RequestBody DiaryCreateRequestDto request
+    ) {
+        MemberDetail principal = (MemberDetail) authentication.getPrincipal();
+        Long memberId = principal.getId();
+
+        DiaryCreateResponseDto response = diaryService.createDiary(memberId, request);
+        return ResponseEntity.ok(ApiResponse.res(HttpStatus.OK.value(), "소비 일기 작성 성공", response));
     }
 }

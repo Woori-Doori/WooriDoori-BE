@@ -1,13 +1,18 @@
 package com.app.wooridooribe.service.diary;
 
+import com.app.wooridooribe.controller.dto.DiaryCreateRequestDto;
+import com.app.wooridooribe.controller.dto.DiaryCreateResponseDto;
 import com.app.wooridooribe.controller.dto.DiaryResponseDto;
 import com.app.wooridooribe.entity.Diary;
+import com.app.wooridooribe.entity.Member;
 import com.app.wooridooribe.exception.CustomException;
 import com.app.wooridooribe.exception.ErrorCode;
 import com.app.wooridooribe.repository.diary.DiaryRepository;
+import com.app.wooridooribe.repository.member.MemberRepository;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +24,7 @@ import java.util.List;
 public class DiaryServiceImpl implements DiaryService {
 
     private final DiaryRepository diaryRepository;
+    private final MemberRepository memberRepository;
 
     @Override
     public List<DiaryResponseDto> getMonthlyDiaries(Long memberId, LocalDate targetDate) {
@@ -28,15 +34,18 @@ public class DiaryServiceImpl implements DiaryService {
         LocalDate startDate = yearMonth.atDay(1);
         LocalDate endDate = yearMonth.atEndOfMonth();
 
-        List<Diary> diaries = diaryRepository.findByMemberAndMonth(memberId, startDate, endDate);
+        Member memberRef = memberRepository.getReferenceById(memberId);
+        List<Diary> diaries = diaryRepository.findByMemberAndMonth(memberRef, startDate, endDate);
+        if (diaries.isEmpty()) throw new CustomException(ErrorCode.DIARY_ISNULL);
 
-        if (diaries.isEmpty()) {
-            throw new CustomException(ErrorCode.DIARY_ISNULL);
+        // 방어적 소유권 검증(쿼리로 필터되지만 레이어드 방어)
+        boolean anyNotMine = diaries.stream()
+                .anyMatch(d -> !memberId.equals(d.getMember().getId()));
+        if (anyNotMine) {
+            throw new CustomException(ErrorCode.DIARY_ISNOTYOURS);
         }
 
-        return diaries.stream()
-                .map(DiaryResponseDto::from)
-                .toList();
+        return diaries.stream().map(DiaryResponseDto::from).toList();
     }
 
     @Override
@@ -44,9 +53,7 @@ public class DiaryServiceImpl implements DiaryService {
         Diary diary = diaryRepository.findById(diaryId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DIARY_ISNULL));
 
-        if (!diary.getMember().getId().equals(memberId)) {
-            throw new CustomException(ErrorCode.DIARY_ISNOTYOURS);
-        }
+        assertOwnership(diary, memberId);
 
         return DiaryResponseDto.from(diary);
     }
@@ -59,6 +66,58 @@ public class DiaryServiceImpl implements DiaryService {
         int year = targetDate.getYear();
         if (year < 2000 || year > LocalDate.now().getYear() + 1) {
             throw new CustomException(ErrorCode.DIARY_INVALID_DATE);
+        }
+    }
+
+    @Override
+    @Transactional // ⬅️ 클래스 readOnly=true 오버라이드 (쓰기 필요)
+    public DiaryCreateResponseDto createDiary(Long memberId, DiaryCreateRequestDto request) {
+        validateCreateRequest(request);
+
+        Member memberRef = memberRepository.getReferenceById(memberId);
+
+        // 하루 1개 정책: 중복 방지
+        diaryRepository.findByMemberAndDiaryDay(memberRef, request.getDiaryDay())
+                .ifPresent(d -> { throw new CustomException(ErrorCode.DIARY_DUPLICATE_DATE); });
+
+        try {
+            Diary saved = diaryRepository.save(
+                    Diary.builder()
+                            .member(memberRef)
+                            .diaryDay(request.getDiaryDay())
+                            .diaryEmotion(request.getDiaryEmotion())
+                            .diaryContent(request.getDiaryContent())
+                            .build()
+            );
+            return new DiaryCreateResponseDto(saved.getId(), "소비 일기가 성공적으로 등록되었습니다.");
+        } catch (DataIntegrityViolationException e) {
+            // DB 유니크 인덱스(uq_member_day) 하드가드 (동시성 대비)
+            throw new CustomException(ErrorCode.DIARY_DUPLICATE_DATE);
+        } catch (Exception e) {
+            throw new CustomException(ErrorCode.DIARY_CREATE_FAILED);
+        }
+    }
+
+    private void validateCreateRequest(DiaryCreateRequestDto request) {
+        if (request == null || request.getDiaryDay() == null) {
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+        String emotion = request.getDiaryEmotion();
+        String content = request.getDiaryContent();
+        if (emotion == null || emotion.isBlank() || content == null || content.isBlank()) {
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        validateDate(request.getDiaryDay());
+    }
+
+    // 공통 소유권 검증 헬퍼
+    private void assertOwnership(Diary diary, Long memberId) {
+        if (diary == null || diary.getMember() == null || diary.getMember().getId() == null) {
+            throw new CustomException(ErrorCode.DIARY_ISNOTYOURS);
+        }
+        if (!memberId.equals(diary.getMember().getId())) {
+            throw new CustomException(ErrorCode.DIARY_ISNOTYOURS);
         }
     }
 }

@@ -72,6 +72,8 @@ public enum ErrorCode {
     DIARY_ISNULL(HttpStatus.NOT_FOUND, "DIARY-006", "해당 월의 소비 일기가 존재하지 않습니다."),
     DIARY_INVALID_DATE(HttpStatus.BAD_REQUEST, "DIARY-007", "유효하지 않은 날짜 형식입니다."),
     DIARY_DUPLICATE_DATE(HttpStatus.CONFLICT, "DIARY-008", "해당 날짜의 일기가 이미 존재합니다."),
+    INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "DIARY-009", "입력 값이 유효하지 않습니다."),
+    DIARY_CREATE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "DIARY-010","소비 일기 생성에 실패했습니다."),
 
     // 카드 - 카드 생성
     INVALID_CARD_NUMBER(HttpStatus.BAD_REQUEST, "CARD-001", "카드 번호가 옳지 않습니다."),
