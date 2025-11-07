@@ -2,12 +2,14 @@ package com.app.wooridooribe.controller;
 
 import com.app.wooridooribe.controller.dto.ApiResponse;
 import com.app.wooridooribe.controller.dto.DiaryResponseDto;
-import com.app.wooridooribe.exception.CustomException;
-import com.app.wooridooribe.exception.ErrorCode;
+import com.app.wooridooribe.jwt.MemberDetail;
 import com.app.wooridooribe.service.diary.DiaryService;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,29 +23,31 @@ public class DiaryController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<DiaryResponseDto>>> getMonthlyDiaries(
-            @RequestParam Long memberId,
-            @RequestParam String targetMonth
+            Authentication authentication,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate targetDate
     ) {
-        try {
-            String[] parts = targetMonth.split("-");
-            int year = Integer.parseInt(parts[0]);
-            int month = Integer.parseInt(parts[1]);
+        MemberDetail principal = (MemberDetail) authentication.getPrincipal();
+        Long memberId = principal.getId();
 
-            List<DiaryResponseDto> result = diaryService.getMonthlyDiaries(memberId, year, month);
+        List<DiaryResponseDto> result = diaryService.getMonthlyDiaries(memberId, targetDate);
 
-            return ResponseEntity.ok(
-                    ApiResponse.res(HttpStatus.OK.value(), "소비 일기 전체 조회 성공", result)
-            );
-        } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
-            throw new CustomException(ErrorCode.DIARY_INVALID_DATE);
-        }
+        return ResponseEntity.ok(
+                ApiResponse.res(HttpStatus.OK.value(), "소비 일기 전체 조회 성공", result)
+        );
     }
 
     @GetMapping("/{diaryId}")
     public ResponseEntity<ApiResponse<DiaryResponseDto>> getDiaryDetail(
+            Authentication authentication,
             @PathVariable Long diaryId
     ) {
-        DiaryResponseDto result = diaryService.getDiaryDetail(diaryId);
-        return ResponseEntity.ok(ApiResponse.res(HttpStatus.OK.value(), "소비 일기 상세 조회 성공", result));
+        MemberDetail principal = (MemberDetail) authentication.getPrincipal();
+        Long memberId = principal.getId();
+
+        DiaryResponseDto result = diaryService.getDiaryDetail(diaryId, memberId);
+        return ResponseEntity.ok(
+                ApiResponse.res(HttpStatus.OK.value(), "소비 일기 상세 조회 성공", result)
+        );
     }
 }

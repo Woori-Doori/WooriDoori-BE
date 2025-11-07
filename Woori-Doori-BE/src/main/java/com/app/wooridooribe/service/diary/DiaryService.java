@@ -1,10 +1,11 @@
 package com.app.wooridooribe.service.diary;
 
 import com.app.wooridooribe.controller.dto.DiaryResponseDto;
+import java.time.LocalDate;
 import java.util.List;
 
 public interface DiaryService {
-    List<DiaryResponseDto> getMonthlyDiaries(Long memberId, int year, int month);
+    List<DiaryResponseDto> getMonthlyDiaries(Long memberId, LocalDate targetDate);
 
-    DiaryResponseDto getDiaryDetail(Long diaryId);
+    DiaryResponseDto getDiaryDetail(Long diaryId, Long memberId);
 }
