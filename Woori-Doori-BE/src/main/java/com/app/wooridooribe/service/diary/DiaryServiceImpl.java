@@ -6,6 +6,7 @@ import com.app.wooridooribe.exception.CustomException;
 import com.app.wooridooribe.exception.ErrorCode;
 import com.app.wooridooribe.repository.diary.DiaryRepository;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,10 +24,12 @@ public class DiaryServiceImpl implements DiaryService {
     public List<DiaryResponseDto> getMonthlyDiaries(Long memberId, LocalDate targetDate) {
         validateDate(targetDate);
 
-        int year = targetDate.getYear();
-        int month = targetDate.getMonthValue();
+        YearMonth yearMonth = YearMonth.from(targetDate);
+        LocalDate startDate = yearMonth.atDay(1);
+        LocalDate endDate = yearMonth.atEndOfMonth();
 
-        List<Diary> diaries = diaryRepository.findByMemberAndMonth(memberId, year, month);
+        List<Diary> diaries = diaryRepository.findByMemberAndMonth(memberId, startDate, endDate);
+
         if (diaries.isEmpty()) {
             throw new CustomException(ErrorCode.DIARY_ISNULL);
         }
@@ -54,7 +57,7 @@ public class DiaryServiceImpl implements DiaryService {
         }
 
         int year = targetDate.getYear();
-        if (year < 2000) {
+        if (year < 2000 || year > LocalDate.now().getYear() + 1) {
             throw new CustomException(ErrorCode.DIARY_INVALID_DATE);
         }
     }
