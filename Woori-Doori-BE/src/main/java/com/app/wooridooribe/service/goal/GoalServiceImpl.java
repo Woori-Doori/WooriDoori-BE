@@ -1,6 +1,6 @@
 package com.app.wooridooribe.service.goal;
 
-import com.app.wooridooribe.controller.dto.GoalDto;
+import com.app.wooridooribe.controller.dto.ReturnGoalDto;
 import com.app.wooridooribe.controller.dto.SetGoalDto;
 import com.app.wooridooribe.entity.Goal;
 import com.app.wooridooribe.entity.Member;
@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -23,65 +24,73 @@ public class GoalServiceImpl implements GoalService {
     private final MemberRepository memberRepository;
 
     @Override
-    public SetGoalDto setGoal(Long memberId, SetGoalDto setGoalDto) {
+    public ReturnGoalDto setGoal(Long memberId, SetGoalDto setGoalDto) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        LocalDate now = LocalDate.now();
-        LocalDate targetDate = now.withDayOfMonth(1); // 이번 달 1일 기준
+        LocalDate thisMonth = LocalDate.now().withDayOfMonth(1);
+        LocalDate nextMonth = thisMonth.plusMonths(1);
 
-        Goal goal = null;
+        if (setGoalDto == null ||
+                setGoalDto.getGoalJob() == null ||
+                setGoalDto.getGoalIncome() == null ||
+                setGoalDto.getPreviousGoalMoney() == null) {
+            throw new CustomException(ErrorCode.GOAL_INVALIDVALUE);
+        }
 
-        // 1️⃣ 이번 달 목표 조회
-        goal = goalRepository.findByMemberAndGoalStartDateBetween(
-                member,
-                targetDate,
-                targetDate.withDayOfMonth(targetDate.lengthOfMonth())
-        ).orElse(null);
+        // 이번 달, 다음 달 목표 조회
+        Optional<Goal> thisMonthGoalOpt = goalRepository.findByMemberAndGoalStartDate(member, thisMonth);
+        Optional<Goal> nextMonthGoalOpt = goalRepository.findByMemberAndGoalStartDate(member, nextMonth);
 
-        if (goal == null) {
-            // 이번 달 목표가 없으면 새로 등록
+        Goal goal;           // 저장 또는 수정될 목표 객체
+        String resultMsg;    // 반환용 메시지
+
+        if (thisMonthGoalOpt.isEmpty()) {
+            // 이번 달 목표가 없으면 → 이번 달 목표 등록
             goal = Goal.builder()
                     .member(member)
-                    .goalStartDate(targetDate)
+                    .goalStartDate(thisMonth)
                     .previousGoalMoney(setGoalDto.getPreviousGoalMoney())
                     .goalJob(setGoalDto.getGoalJob())
                     .goalIncome(setGoalDto.getGoalIncome())
                     .goalScore(0)
-                    .goalComment("이번 달 목표")
                     .build();
-        } else {
-            // 이번 달 목표가 이미 있으면 다음 달 목표 조회
-            targetDate = targetDate.plusMonths(1);
-            goal = goalRepository.findByMemberAndGoalStartDateBetween(
-                    member,
-                    targetDate,
-                    targetDate.withDayOfMonth(targetDate.lengthOfMonth())
-            ).orElse(
-                    // 없으면 새로 등록
-                    Goal.builder()
-                            .member(member)
-                            .goalStartDate(targetDate)
-                            .goalScore(0)
-                            .goalComment("다음 달 목표")
-                            .previousGoalMoney(setGoalDto.getPreviousGoalMoney())
-                            .goalJob(setGoalDto.getGoalJob())
-                            .goalIncome(setGoalDto.getGoalIncome())
-                            .build()
-            );
 
-            // 이미 존재하면 수정
+            goalRepository.save(goal);
+            resultMsg = "이번 달 목표를 설정했어요";
+        }
+        else if (nextMonthGoalOpt.isEmpty()) {
+            // 이번 달 목표는 있지만 다음 달 목표가 없으면 → 다음 달 목표 등록
+            goal = Goal.builder()
+                    .member(member)
+                    .goalStartDate(nextMonth)
+                    .previousGoalMoney(setGoalDto.getPreviousGoalMoney())
+                    .goalJob(setGoalDto.getGoalJob())
+                    .goalIncome(setGoalDto.getGoalIncome())
+                    .goalScore(0)
+                    .build();
+
+            goalRepository.save(goal);
+            resultMsg = "다음 달 목표를 등록했어요";
+        }
+        else {
+            // 둘 다 있으면 → 다음 달 목표 수정
+            goal = nextMonthGoalOpt.get();
             goal.setPreviousGoalMoney(setGoalDto.getPreviousGoalMoney());
             goal.setGoalJob(setGoalDto.getGoalJob());
             goal.setGoalIncome(setGoalDto.getGoalIncome());
+            goalRepository.save(goal);
+            resultMsg = "다음 달 목표를 수정했어요";
         }
 
-        goalRepository.save(goal);
-
-        return SetGoalDto.builder()
-                .goalJob(goal.getGoalJob())
-                .goalIncome(goal.getGoalIncome())
-                .previousGoalMoney(goal.getPreviousGoalMoney())
+        // 공통 반환 DTO 생성 (return 한 번만)
+        return ReturnGoalDto.builder()
+                .resultMsg(resultMsg)
+                .goalData(SetGoalDto.builder()
+                        .goalJob(goal.getGoalJob())
+                        .goalIncome(goal.getGoalIncome())
+                        .previousGoalMoney(goal.getPreviousGoalMoney())
+                        .build())
                 .build();
     }
 }

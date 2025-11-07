@@ -1,9 +1,6 @@
 package com.app.wooridooribe.controller;
 
-import com.app.wooridooribe.controller.dto.ApiResponse;
-import com.app.wooridooribe.controller.dto.MemberDto;
-import com.app.wooridooribe.controller.dto.SetGoalDto;
-import com.app.wooridooribe.controller.dto.GoalDto;
+import com.app.wooridooribe.controller.dto.*;
 import com.app.wooridooribe.entity.Goal;
 import com.app.wooridooribe.jwt.MemberDetail;
 import com.app.wooridooribe.service.goal.GoalService;
@@ -27,14 +24,17 @@ public class GoalController {
 
     /** 목표 설정 API **/
     @PutMapping("/setgoal")
-    public ResponseEntity<ApiResponse<SetGoalDto>> setGoal(Authentication authentication, @RequestBody SetGoalDto setGoalDto
-    ) {
-        MemberDetail principal = (MemberDetail) authentication.getPrincipal();
+    public ResponseEntity<ApiResponse<SetGoalDto>> setCurrentGoal(Authentication authentication,
+            @RequestBody SetGoalDto setGoalDto) {
 
+        MemberDetail principal = (MemberDetail) authentication.getPrincipal();
         Long memberId = principal.getMember().getId();
-        SetGoalDto result = goalService.setGoal(memberId, setGoalDto);
-        return ResponseEntity.ok(ApiResponse.res(200, "목표 금액을 설정했어요", result));
+
+        ReturnGoalDto result = goalService.setGoal(memberId, setGoalDto);
+
+        return ResponseEntity.ok(ApiResponse.res(200, result.getResultMsg(), result.getGoalData()));
     }
+
 
 
 //    /** 목표 히스토리 조회 API **/
