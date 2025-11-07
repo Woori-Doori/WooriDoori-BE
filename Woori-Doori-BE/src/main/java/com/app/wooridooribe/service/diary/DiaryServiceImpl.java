@@ -112,16 +112,6 @@ public class DiaryServiceImpl implements DiaryService {
         validateDate(request.getDiaryDay());
     }
 
-    // 공통 소유권 검증 헬퍼
-    private void assertOwnership(Diary diary, Long memberId) {
-        if (diary == null || diary.getMember() == null || diary.getMember().getId() == null) {
-            throw new CustomException(ErrorCode.DIARY_ISNOTYOURS);
-        }
-        if (!memberId.equals(diary.getMember().getId())) {
-            throw new CustomException(ErrorCode.DIARY_ISNOTYOURS);
-        }
-    }
-
     @Override
     @Transactional
     public DiaryResponseDto updateDiary(Long diaryId, Long memberId, DiaryUpdateRequestDto request) {
@@ -149,6 +139,33 @@ public class DiaryServiceImpl implements DiaryService {
             return DiaryResponseDto.from(diary);
         } catch (Exception e) {
             throw new CustomException(ErrorCode.DIARY_UPDATE_FAIL);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deleteDiary(Long diaryId, Long memberId) {
+        Diary diary = diaryRepository.findById(diaryId)
+                .orElseThrow(() -> new CustomException(ErrorCode.DIARY_ISNULL));
+
+        if (!diary.getMember().getId().equals(memberId)) {
+            throw new CustomException(ErrorCode.DIARY_ISNOTYOURS);
+        }
+
+        try {
+            diaryRepository.delete(diary);
+        } catch (Exception e) {
+            throw new CustomException(ErrorCode.DIARY_DELETE_FAIL);
+        }
+    }
+
+    // 공통 소유권 검증 헬퍼
+    private void assertOwnership(Diary diary, Long memberId) {
+        if (diary == null || diary.getMember() == null || diary.getMember().getId() == null) {
+            throw new CustomException(ErrorCode.DIARY_ISNOTYOURS);
+        }
+        if (!memberId.equals(diary.getMember().getId())) {
+            throw new CustomException(ErrorCode.DIARY_ISNOTYOURS);
         }
     }
 }

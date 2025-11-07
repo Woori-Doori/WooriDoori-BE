@@ -84,4 +84,20 @@ public class DiaryController {
                 ApiResponse.res(HttpStatus.OK.value(), "소비 일기 수정 성공", result)
         );
     }
+
+    /** 소비 일기 삭제 */
+    @DeleteMapping("/{diaryId}")
+    public ResponseEntity<ApiResponse<Void>> deleteDiary(
+            Authentication authentication,
+            @PathVariable Long diaryId
+    ) {
+        MemberDetail principal = (MemberDetail) authentication.getPrincipal();
+        Long memberId = principal.getId();
+
+        diaryService.deleteDiary(diaryId, memberId);
+        return ResponseEntity.ok(
+                ApiResponse.res(HttpStatus.OK.value(), "소비 일기 삭제 성공", null)
+        );
+    }
+
 }

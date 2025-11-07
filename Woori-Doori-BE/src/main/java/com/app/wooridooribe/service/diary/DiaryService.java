@@ -15,4 +15,6 @@ public interface DiaryService {
     DiaryCreateResponseDto createDiary(Long memberId, DiaryCreateRequestDto request);
 
     DiaryResponseDto updateDiary(Long diaryId, Long memberId, DiaryUpdateRequestDto request);
+
+    void deleteDiary(Long diaryId, Long memberId);
 }
