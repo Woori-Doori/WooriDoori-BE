@@ -9,5 +9,7 @@ import java.util.Optional;
 
 public interface GoalRepository extends JpaRepository<Goal, Long> {
 
-    Optional<Goal> findByMemberId(Long memberId);
+    Optional<Goal> findByMember(Member member);
+    Optional<Goal> findByMemberAndGoalStartDateBetween(Member member, LocalDate startDate, LocalDate endDate);
+
 }
