@@ -43,47 +43,38 @@ public class GoalServiceImpl implements GoalService {
         Optional<Goal> nextMonthGoalOpt = goalRepository.findByMemberAndGoalStartDate(member, nextMonth);
 
         Goal goal;           // 저장 또는 수정될 목표 객체
-        String resultMsg;    // 반환용 메시지
+        String resultMsg="";    // 반환용 메시지
+        LocalDate goalMonth = null;
+
 
         if (thisMonthGoalOpt.isEmpty()) {
-            // 이번 달 목표가 없으면 → 이번 달 목표 등록
-            goal = Goal.builder()
-                    .member(member)
-                    .goalStartDate(thisMonth)
-                    .previousGoalMoney(setGoalDto.getPreviousGoalMoney())
-                    .goalJob(setGoalDto.getGoalJob())
-                    .goalIncome(setGoalDto.getGoalIncome())
-                    .goalScore(0)
-                    .build();
+            goalMonth = thisMonth;
 
-            goalRepository.save(goal);
-            resultMsg = "이번 달 목표를 설정했어요";
-        }
-        else if (nextMonthGoalOpt.isEmpty()) {
-            // 이번 달 목표는 있지만 다음 달 목표가 없으면 → 다음 달 목표 등록
-            goal = Goal.builder()
-                    .member(member)
-                    .goalStartDate(nextMonth)
-                    .previousGoalMoney(setGoalDto.getPreviousGoalMoney())
-                    .goalJob(setGoalDto.getGoalJob())
-                    .goalIncome(setGoalDto.getGoalIncome())
-                    .goalScore(0)
-                    .build();
-
-            goalRepository.save(goal);
+        } else if (nextMonthGoalOpt.isEmpty()) {
+            goalMonth = nextMonth;
             resultMsg = "다음 달 목표를 등록했어요";
         }
-        else {
-            // 둘 다 있으면 → 다음 달 목표 수정
+
+        if (goalMonth != null) {
+            goal = Goal.builder()
+                    .member(member)
+                    .goalStartDate(goalMonth)
+                    .previousGoalMoney(setGoalDto.getPreviousGoalMoney())
+                    .goalJob(setGoalDto.getGoalJob())
+                    .goalIncome(setGoalDto.getGoalIncome())
+                    .goalScore(0)
+                    .build();
+            goalRepository.save(goal);
+        } else {
             goal = nextMonthGoalOpt.get();
             goal.setPreviousGoalMoney(setGoalDto.getPreviousGoalMoney());
             goal.setGoalJob(setGoalDto.getGoalJob());
             goal.setGoalIncome(setGoalDto.getGoalIncome());
             goalRepository.save(goal);
+
             resultMsg = "다음 달 목표를 수정했어요";
         }
 
-        // 공통 반환 DTO 생성 (return 한 번만)
         return ReturnGoalDto.builder()
                 .resultMsg(resultMsg)
                 .goalData(SetGoalDto.builder()
@@ -92,5 +83,6 @@ public class GoalServiceImpl implements GoalService {
                         .previousGoalMoney(goal.getPreviousGoalMoney())
                         .build())
                 .build();
+
     }
 }
