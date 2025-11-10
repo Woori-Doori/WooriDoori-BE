@@ -1,9 +1,15 @@
 package com.app.wooridooribe.service.card;
 
+import com.app.wooridooribe.controller.dto.CardCreateRequestDto;
 import com.app.wooridooribe.controller.dto.CardResponseDto;
+import com.app.wooridooribe.controller.dto.UserCardResponseDto;
 import com.app.wooridooribe.entity.Card;
+import com.app.wooridooribe.entity.Member;
 import com.app.wooridooribe.entity.MemberCard;
+import com.app.wooridooribe.exception.CustomException;
+import com.app.wooridooribe.exception.ErrorCode;
 import com.app.wooridooribe.repository.card.CardRepository;
+import com.app.wooridooribe.repository.member.MemberRepository;
 import com.app.wooridooribe.repository.membercard.MemberCardRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,12 +27,13 @@ public class CardServiceImpl implements CardService {
 
     private final MemberCardRepository memberCardRepository;
     private final CardRepository cardRepository;
+    private final MemberRepository memberRepository;
 
     @Override
     @Transactional(readOnly = true)
     public List<CardResponseDto> getCardList(Long memberId) {
         List<MemberCard> memberCards = memberCardRepository.findByMemberIdWithCard(memberId);
-        
+
         return memberCards.stream()
                 .map(CardResponseDto::from)
                 .collect(Collectors.toList());
@@ -35,10 +43,82 @@ public class CardServiceImpl implements CardService {
     @Transactional(readOnly = true)
     public List<CardResponseDto> getAllCards() {
         List<Card> cards = cardRepository.findAllWithImage();
-        
+
         return cards.stream()
                 .map(CardResponseDto::fromCard)
                 .collect(Collectors.toList());
     }
-}
 
+    @Override
+    @Transactional
+    public UserCardResponseDto createUserCard(Long memberId, CardCreateRequestDto request) {
+        // Member 엔티티 참조 (프록시 객체 - FK 설정용)
+        Member member = memberRepository.getReferenceById(memberId);
+
+        // 기존 카드가 있는지 확인 (카드번호로만 검색 - member가 null일 수 있으므로)
+        Optional<MemberCard> existingCard = memberCardRepository.findByCardNum(request.getCardNum());
+
+        MemberCard memberCard;
+        if (existingCard.isPresent()) {
+            // 기존 카드가 있으면 검증 후 card_alias만 업데이트
+            memberCard = existingCard.get();
+
+            // 카드 정보 검증 (비밀번호, 유효기간, 주민등록번호)
+            if (!memberCard.getCardPw().equals(request.getCardPw())) {
+                throw new CustomException(ErrorCode.INVALID_CARD_PASSWORD);
+            }
+            if (!memberCard.getExpiryMmYy().equals(request.getExpiryMmYy())) {
+                throw new CustomException(ErrorCode.CARD_EXPIRED);
+            }
+            // 주민등록번호 앞자리와 뒷자리 각각 검증
+            log.debug("주민등록번호 검증 - DB: registNum={}, registBack={}, 요청: registNum={}, registBack={}",
+                    memberCard.getCardUserRegistNum(), memberCard.getCardUserRegistBack(),
+                    request.getCardUserRegistNum(), request.getCardUserRegistBack());
+
+            if (!memberCard.getCardUserRegistNum().equals(request.getCardUserRegistNum())) {
+                log.warn("주민등록번호 앞자리 불일치 - DB: {}, 요청: {}",
+                        memberCard.getCardUserRegistNum(), request.getCardUserRegistNum());
+                throw new CustomException(ErrorCode.INVALID_BIRTHDATE);
+            }
+            if (!memberCard.getCardUserRegistBack().equals(request.getCardUserRegistBack())) {
+                log.warn("주민등록번호 뒷자리 불일치 - DB: {}, 요청: {}",
+                        memberCard.getCardUserRegistBack(), request.getCardUserRegistBack());
+                throw new CustomException(ErrorCode.INVALID_BIRTHDATE);
+            }
+            // CVC 검증
+            if (!memberCard.getCardCvc().equals(request.getCardCvc())) {
+                log.warn("CVC 불일치 - DB: {}, 요청: {}",
+                        memberCard.getCardCvc(), request.getCardCvc());
+                throw new CustomException(ErrorCode.INVALID_CVC);
+            }
+
+            // member FK 설정 및 card_alias 업데이트 후 DB에 저장
+            log.info("MemberCard 업데이트 전 - memberId: {}, cardNum: {}, 기존 member: {}",
+                    memberId, request.getCardNum(),
+                    memberCard.getMember() != null ? memberCard.getMember().getId() : "null");
+
+            // member FK를 직접 UPDATE 쿼리로 설정 (명시적으로 DB에 반영)
+            int updatedRows = memberCardRepository.updateMemberId(memberCard.getId(), memberId);
+            log.info("MemberCard member_id 업데이트 - memberCardId: {}, memberId: {}, updatedRows: {}",
+                    memberCard.getId(), memberId, updatedRows);
+
+            // card_alias 업데이트
+            if (request.getCardAlias() != null && !request.getCardAlias().isEmpty()) {
+                memberCard.setCardAlias(request.getCardAlias());
+                memberCardRepository.saveAndFlush(memberCard);
+            }
+
+            // 저장 후 다시 조회하여 최신 상태 가져오기
+            memberCard = memberCardRepository.findByMemberIdAndCardNum(memberId, request.getCardNum())
+                    .orElse(memberCard);
+
+            log.info("최종 조회 후 - memberCard member: {}",
+                    memberCard.getMember() != null ? memberCard.getMember().getId() : "null");
+        } else {
+            // 기존 카드가 없으면 에러 (카드번호로 Card를 식별할 수 없으므로)
+            throw new CustomException(ErrorCode.CARD_ISNULL);
+        }
+
+        return UserCardResponseDto.from(memberCard);
+    }
+}
