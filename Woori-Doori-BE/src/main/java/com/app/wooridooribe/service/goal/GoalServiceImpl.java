@@ -4,6 +4,7 @@ import com.app.wooridooribe.controller.dto.GoalResponseDto;
 import com.app.wooridooribe.controller.dto.SetGoalDto;
 import com.app.wooridooribe.entity.Goal;
 import com.app.wooridooribe.entity.Member;
+import com.app.wooridooribe.entity.type.JobType;
 import com.app.wooridooribe.exception.CustomException;
 import com.app.wooridooribe.exception.ErrorCode;
 import com.app.wooridooribe.repository.goal.GoalRepository;
@@ -37,7 +38,7 @@ public class GoalServiceImpl implements GoalService {
         }
 
         if((Integer.parseInt(setGoalDto.getGoalIncome())<setGoalDto.getPreviousGoalMoney())
-                && (!(setGoalDto.getGoalJob().equals("무직") || setGoalDto.getGoalJob().equals("학생")))) {
+                && (!(setGoalDto.getGoalJob().equals(JobType.UNEMPLOYED) || setGoalDto.getGoalJob().equals(JobType.STUDENT)))) {
             //제한금액이 급여보다 클 경우
             throw new CustomException(ErrorCode.GOAL_INVALIDNUM);
         }

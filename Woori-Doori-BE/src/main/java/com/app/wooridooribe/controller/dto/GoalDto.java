@@ -3,6 +3,7 @@ package com.app.wooridooribe.controller.dto;
 import com.app.wooridooribe.entity.Member;
 import com.app.wooridooribe.entity.Goal;
 
+import com.app.wooridooribe.entity.type.JobType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -38,8 +39,8 @@ public class GoalDto {
     @Schema(description = "두리 코멘트", example = "")
     private String goalComment;
 
-    @Schema(description = "회원 직업", example = "회사원")
-    private String goalJob;
+    @Schema(description = "회원 직업", example = "EMPLOYEE")
+    private JobType goalJob;
 
     @Schema(description = "월 수입", example = "2000")
     private String goalIncome;

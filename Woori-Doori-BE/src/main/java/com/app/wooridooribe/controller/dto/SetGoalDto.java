@@ -1,10 +1,10 @@
 package com.app.wooridooribe.controller.dto;
 
 import com.app.wooridooribe.entity.Member;
+import com.app.wooridooribe.entity.type.JobType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 
-import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -15,8 +15,8 @@ import java.time.LocalDate;
 @Builder
 public class SetGoalDto {
 
-    @Schema(description = "회원 직업", example = "회사원")
-    private String goalJob; // 직업
+    @Schema(description = "회원 직업", example = "EMPLOYEE")
+    private JobType goalJob; // 직업
 
     @Schema(description = "월 수입", example = "2000")
     private String goalIncome; // 수입
