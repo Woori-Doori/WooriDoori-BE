@@ -20,7 +20,7 @@ import java.time.LocalDate;
 
 public class GoalDto {
 
-    @Schema(description = "회원 ID", example = "example@naver.com")
+    @Schema(description = "회원 ID", example = "1L")
     private Long memberId;
 
     @Schema(description = "목표 시작 날짜", example = "2025-11-01")
