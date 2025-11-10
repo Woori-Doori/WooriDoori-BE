@@ -1,4 +1,4 @@
-package com.app.wooridooribe.repository.cardhistory;
+package com.app.wooridooribe.repository.cardHistory;
 
 import com.app.wooridooribe.controller.dto.CardHistorySummaryResponseDto;
 import com.app.wooridooribe.entity.CardHistory;

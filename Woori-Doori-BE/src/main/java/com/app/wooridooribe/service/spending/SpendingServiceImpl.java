@@ -6,7 +6,7 @@ import com.app.wooridooribe.entity.CardHistory;
 import com.app.wooridooribe.entity.type.StatusType;
 import com.app.wooridooribe.exception.CustomException;
 import com.app.wooridooribe.exception.ErrorCode;
-import com.app.wooridooribe.repository.cardhistory.CardHistoryRepository;
+import com.app.wooridooribe.repository.cardHistory.CardHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
