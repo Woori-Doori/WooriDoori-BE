@@ -26,18 +26,14 @@ public class GoalController {
     private final GoalService goalService;
 
     /** 목표 설정 API **/
+
     @PutMapping("/setgoal")
-    @Operation(
-            summary = "목표 금액 설정/수정",  // Swagger UI에서 API 제목
-            description = """
-            이번 달 목표가 없으면 이번 달 목표를 설정하고,
-            이미 있다면 다음 달 목표를 등록하거나 수정합니다.
-            
-            - 이번 달 목표 없음 → 이번 달 목표 설정
-            - 다음 달 목표 없음 → 다음 달 목표 등록
-            - 둘 다 있음 → 다음 달 목표 수정
-            """
-    )
+    @Operation(summary = "목표 금액 설정/수정", description = "이번 달 목표가 없으면 이번 달 목표를 설정하고, 이미 있다면 다음 달 목표를 등록하거나 수정합니다")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "목표 설정 성공")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422", description = "잘못된 값을 입력하였습니다")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "목표치는 급여보다 클 수 없습니다")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패 (JWT 필요)")
     public ResponseEntity<ApiResponse<SetGoalDto>> setCurrentGoal(Authentication authentication,
             @RequestBody SetGoalDto setGoalDto) {
 
