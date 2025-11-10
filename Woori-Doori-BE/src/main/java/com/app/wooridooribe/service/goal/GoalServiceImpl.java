@@ -38,6 +38,12 @@ public class GoalServiceImpl implements GoalService {
             throw new CustomException(ErrorCode.GOAL_INVALIDVALUE);
         }
 
+        if((Integer.parseInt(setGoalDto.getGoalIncome())<setGoalDto.getPreviousGoalMoney())
+                && (!(setGoalDto.getGoalJob().equals("무직") || setGoalDto.getGoalJob().equals("학생")))) {
+            //제한금액이 급여보다 클 경우
+            throw new CustomException(ErrorCode.GOAL_INVALIDNUM);
+        }
+
         // 이번 달, 다음 달 목표 조회
         Optional<Goal> thisMonthGoalOpt = goalRepository.findByMemberAndGoalStartDate(member, thisMonth);
         Optional<Goal> nextMonthGoalOpt = goalRepository.findByMemberAndGoalStartDate(member, nextMonth);

@@ -31,7 +31,6 @@ jobs:
           java-version: "17"
           distribution: "temurin"
 
-
       - name: Create .env from secrets
         run: |
           echo "S3_BUCKET=${{ secrets.S3_BUCKET }}" >> .env
@@ -44,10 +43,7 @@ jobs:
           echo "DB_USERNAME=${{ secrets.DB_USERNAME }}" >> .env
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
           echo "REDIS_URL=${{ secrets.REDIS_URL }}" >> .env
-          echo "REDIS_PORT=${{ secrets.REDIS_PORT }}" >> .env   
-          
-          
-          
+          echo "REDIS_PORT=${{ secrets.REDIS_PORT }}" >> .env
 
       - name: Cache Gradle packages
         uses: actions/cache@v4
@@ -160,7 +156,7 @@ jobs:
             count=$(jq '.runs[0].results | length' trivy-results.sarif)
             echo "result_count=$count" >> $GITHUB_OUTPUT
             echo "Found $count vulnerabilities"
-          
+
             # 취약점 상세 정보 출력
             if [ "$count" -gt 0 ]; then
               echo "=== Vulnerability Details ==="
@@ -243,7 +239,9 @@ jobs:
           image-ref: "${{ env.IMAGE }}@${{ steps.push.outputs.digest }}"
           scan-type: "image"
           format: "cyclonedx"
-          output: "sbom.json"
+          output: "${{ github.workspace }}/Woori-Doori-BE/sbom.json"
+
+
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
@@ -254,7 +252,7 @@ jobs:
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
           cosign sign --yes \
-            ${{ env.IMAGE }}:sha-${{ github.sha }}
+            ${{ env.IMAGE }}@${DIGEST}
 
       # sbom.json 파일을 이미지에 증명용으로 첨부
       # 이미지 내부에 GHCR 메타데이터로 구성요소들이 남아있음
@@ -263,15 +261,21 @@ jobs:
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
           cosign attest --yes \
-            --predicate sbom.json \
+            --predicate "${{ github.workspace }}/Woori-Doori-BE/sbom.json" \
             --type cyclonedx \
-            ${{ env.IMAGE }}:sha-${{ github.sha }}
+            "${{ env.IMAGE }}@${DIGEST}"
+            
+      - name: Check SBOM file path
+        run: |
+          echo "현재 디렉터리: $(pwd)"
+          echo "파일 목록:"
+          find . -name "sbom.json"
 
       - name: Verify image base
         run: |
           echo "Checking image layers and base..."
-          docker pull ${{ env.IMAGE }}:sha-${{ github.sha }}
-          docker history ${{ env.IMAGE }}:sha-${{ github.sha }} --no-trunc
+          docker pull "${{ env.IMAGE }}@${{ steps.push.outputs.digest }}"
+          docker history "${{ env.IMAGE }}@${{ steps.push.outputs.digest }}" --no-trunc
           echo "Image verification completed successfully"
 
   deploy:
@@ -285,7 +289,8 @@ jobs:
         shell: bash
         run: |
           echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
-          echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/application:sha-${{ github.sha }}" >> $GITHUB_ENV
+          # 태그 제거: 베이스 레퍼런스만 유지
+          echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/application" >> $GITHUB_ENV
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -296,10 +301,13 @@ jobs:
 
       - name: Verify signature before SSH deploy
         run: |
+          echo "workflow_ref = ${{ github.workflow_ref }}"
+          # 예: Woori-Doori/WooriDoori-BE/.github/workflows/gradle.yml@refs/heads/main
+      
           cosign verify \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/gradle-publish.yml@refs/heads/main" \
-            "${{ env.IMAGE }}"
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            "${{ env.IMAGE }}@${{ needs.build-and-push.outputs.image_digest }}"
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
@@ -312,7 +320,42 @@ jobs:
           script: |
             OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
             IMAGE="ghcr.io/${OWNER_LC}/application"
+            ENV_DIR="/run/woori"                 # ← /run 은 일반적으로 tmpfs(RAM)
+            ENV_PATH="$ENV_DIR/.env"
+            
+            set -euo pipefail
+            
+            # 0) tmpfs 디렉터리 준비 (RAM 상에 생성)
+            sudo mkdir -p "$ENV_DIR"
+            sudo chmod 711 "$ENV_DIR"
+            
+            # 1) 임시 파일에 작성 후 루트로 이동 (로그 노출 방지 위해 echo/print 최소화)
+            TMP_ENV="$(mktemp)"
+            cat > "$TMP_ENV" <<'ENV_EOF'
+            S3_BUCKET=${{ secrets.S3_BUCKET }}
+            S3_ACCESS_KEY=${{ secrets.S3_ACCESS_KEY }}
+            S3_SECRET_KEY=${{ secrets.S3_SECRET_KEY }}
+            S3_CLIENT=${{ secrets.S3_CLIENT }}
+            S3_REGION=${{ secrets.S3_REGION }}
+            JWT=${{ secrets.JWT }}
+            DB_URL=${{ secrets.DB_URL }}
+            DB_USERNAME=${{ secrets.DB_USERNAME }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            REDIS_URL=${{ secrets.REDIS_URL }}
+            REDIS_PORT=${{ secrets.REDIS_PORT }}
+            ENV_EOF
+            
+            sudo mv "$TMP_ENV" "$ENV_PATH"
+            # (기존) /run/woori/.env 생성 이후 권한
+            sudo chown root:root "$ENV_PATH"
+            sudo chmod 644 "$ENV_PATH"   # ← 600 → 644로 변경 (world-readable)
+
+
+            
+            # 2) 컨테이너 재배포 (Dotenv가 /app/.env 를 찾으므로 바인드 마운트)
             docker login ghcr.io -u '${{ github.actor }}' -p '${{ secrets.G_TOKEN }}'
             docker pull "${IMAGE}@${{ needs.build-and-push.outputs.image_digest }}"
             docker rm -f app || true
-            docker run -d --name app -p 8080:8080 "${IMAGE}@${{ needs.build-and-push.outputs.image_digest }}"
+            docker run -d --name app -p 8080:8080 \
+              -v "$ENV_PATH":/app/.env:ro \
+              "${IMAGE}@${{ needs.build-and-push.outputs.image_digest }}"
