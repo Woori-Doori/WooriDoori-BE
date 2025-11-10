@@ -42,8 +42,10 @@ public class GoalServiceImpl implements GoalService {
         Optional<Goal> thisMonthGoalOpt = goalRepository.findByMemberAndGoalStartDate(member, thisMonth);
         Optional<Goal> nextMonthGoalOpt = goalRepository.findByMemberAndGoalStartDate(member, nextMonth);
 
+        boolean thisMonthExists = thisMonthGoalOpt.isPresent();
+        boolean nextMonthExists = nextMonthGoalOpt.isPresent();
+
         Goal goal;           // 저장 또는 수정될 목표 객체
-        String resultMsg="";    // 반환용 메시지
         LocalDate goalMonth = null;
 
 
@@ -52,7 +54,6 @@ public class GoalServiceImpl implements GoalService {
 
         } else if (nextMonthGoalOpt.isEmpty()) {
             goalMonth = nextMonth;
-            resultMsg = "다음 달 목표를 등록했어요";
         }
 
         if (goalMonth != null) {
@@ -72,11 +73,11 @@ public class GoalServiceImpl implements GoalService {
             goal.setGoalIncome(setGoalDto.getGoalIncome());
             goalRepository.save(goal);
 
-            resultMsg = "다음 달 목표를 수정했어요";
         }
 
         return ReturnGoalDto.builder()
-                .resultMsg(resultMsg)
+                .thisMonthGoalExists(thisMonthExists)
+                .nextMonthGoalExists(nextMonthExists)
                 .goalData(SetGoalDto.builder()
                         .goalJob(goal.getGoalJob())
                         .goalIncome(goal.getGoalIncome())

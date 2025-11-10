@@ -29,10 +29,20 @@ public class GoalController {
 
         MemberDetail principal = (MemberDetail) authentication.getPrincipal();
         Long memberId = principal.getMember().getId();
+        String resultMsg;
 
         ReturnGoalDto result = goalService.setGoal(memberId, setGoalDto);
 
-        return ResponseEntity.ok(ApiResponse.res(200, result.getResultMsg(), result.getGoalData()));
+        // resultMsg (이번 달 설정 / 다음 달 등록 / 수정됨)
+        if (!result.isThisMonthGoalExists()) {
+            resultMsg = "이번 달 목표를 설정했어요";
+        } else if (!result.isNextMonthGoalExists()) {
+            resultMsg = "다음 달 목표를 등록했어요";
+        } else {
+            resultMsg = "다음 달 목표를 수정했어요";
+        }
+
+        return ResponseEntity.ok(ApiResponse.res(200, resultMsg, result.getGoalData()));
     }
 
 
