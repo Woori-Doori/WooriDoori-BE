@@ -1,5 +1,6 @@
 package com.app.wooridooribe.service.goal;
 
+import com.app.wooridooribe.controller.dto.GoalDto;
 import com.app.wooridooribe.controller.dto.GoalResponseDto;
 import com.app.wooridooribe.controller.dto.SetGoalDto;
 import com.app.wooridooribe.entity.Goal;
@@ -80,5 +81,36 @@ public class GoalServiceImpl implements GoalService {
                 .nextMonthGoalExists(nextMonthGoalExists)
                 .goalData(setGoalDto)
                 .build();
+    }
+
+//    @Override
+//    public List<SetGoalDto> getGoalHistory(Long memberId) {
+//        Member member = memberRepository.findById(memberId)
+//                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+//
+//        List<Goal> goals = goalRepository.findAllGoalsByMember(memberId);
+//
+////        return (SetGoalDto) goals.stream()
+////                .map(goal -> GoalDto.builder()
+////                        .goalStartDate(goals.getGoalStartDate())
+////                        .previousGoalMoney(goals.getPreviousGoalMoney())
+////                        .goalJob(JobType.valueOf(goals.getGoalJob().name()))
+////                        .goalIncome(goals.getGoalIncome())
+////                        .build())
+////                .toList();
+//
+//    }
+    @Override
+    public List<SetGoalDto> getGoalHistory(String memberId) {
+        List<Goal> goals = goalRepository.findAllGoalsByMember(memberId);
+
+        return goals.stream()
+                .map(goal -> SetGoalDto.builder()
+                        .goalStartDate(goal.getGoalStartDate())
+                        .previousGoalMoney(goal.getPreviousGoalMoney())
+                        .goalJob(goal.getGoalJob())
+                        .goalIncome(goal.getGoalIncome())
+                        .build())
+                .toList();
     }
 }

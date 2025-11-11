@@ -9,4 +9,5 @@ import java.util.List;
 public interface GoalQueryDsl {
     List<Goal> findGoalsForThisAndNextMonth(Member member);
 
+    List<Goal> findAllGoalsByMember(String userName);
 }
