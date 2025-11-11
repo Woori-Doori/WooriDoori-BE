@@ -63,11 +63,11 @@ public class GoalController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422", description = "잘못된 값을 입력하였습니다")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패 (JWT 필요)")
-    public ApiResponse<List<SetGoalDto>> getGoalHistory(Authentication authentication) {
+    public ApiResponse<List<GetGoalDto>> getGoalHistory(Authentication authentication) {
         MemberDetail principal = (MemberDetail) authentication.getPrincipal();
         String userId = principal.getMember().getMemberId();
 
-        List<SetGoalDto> result = goalService.getGoalHistory(userId);
+        List<GetGoalDto> result = goalService.getGoalHistory(userId);
         return ApiResponse.res(HttpStatus.OK.value(), "목표 히스토리를 불러왔어요", result);
 
     }

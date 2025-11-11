@@ -1,5 +1,6 @@
 package com.app.wooridooribe.service.goal;
 
+import com.app.wooridooribe.controller.dto.GetGoalDto;
 import com.app.wooridooribe.controller.dto.GoalDto;
 import com.app.wooridooribe.controller.dto.GoalResponseDto;
 import com.app.wooridooribe.controller.dto.SetGoalDto;
@@ -101,14 +102,13 @@ public class GoalServiceImpl implements GoalService {
 //
 //    }
     @Override
-    public List<SetGoalDto> getGoalHistory(String memberId) {
+    public List<GetGoalDto> getGoalHistory(String memberId) {
         List<Goal> goals = goalRepository.findAllGoalsByMember(memberId);
 
         return goals.stream()
-                .map(goal -> SetGoalDto.builder()
+                .map(goal -> GetGoalDto.builder()
                         .goalStartDate(goal.getGoalStartDate())
                         .previousGoalMoney(goal.getPreviousGoalMoney())
-                        .goalJob(goal.getGoalJob())
                         .goalIncome(goal.getGoalIncome())
                         .build())
                 .toList();
