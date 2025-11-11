@@ -82,16 +82,12 @@ public class GoalServiceImpl implements GoalService {
     }
 
     @Override
-    public List<GetGoalDto> getGoalHistory(String requestMemberId, String tokenUserId) {
+    public List<GetGoalDto> getGoalHistory(String memberId) {
 
-        if (!requestMemberId.equals(tokenUserId)) {
-            throw new CustomException(ErrorCode.GOAL_ISNOTYOURS);
-        }
-
-        Member member = memberRepository.findByMemberId(requestMemberId)
+        Member member = memberRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        List<Goal> goals = goalRepository.findAllGoalsByMember(requestMemberId);
+        List<Goal> goals = goalRepository.findAllGoalsByMember(memberId);
 
         if (goals == null || goals.isEmpty()) {
             throw new CustomException(ErrorCode.GOAL_ISNULL);
@@ -102,6 +98,5 @@ public class GoalServiceImpl implements GoalService {
                 .toList();
 
     }
-
 
 }
