@@ -34,6 +34,7 @@ public class GoalQueryDslImpl implements GoalQueryDsl {
         return Optional.ofNullable(result);
     }
 
+    @Override
     public List<Goal> findGoalsForThisAndNextMonth(Member member) {
         QGoal goal = QGoal.goal;
         LocalDate thisMonth = LocalDate.now().withDayOfMonth(1);
@@ -46,6 +47,21 @@ public class GoalQueryDslImpl implements GoalQueryDsl {
                         goal.goalStartDate.in(thisMonth, nextMonth)
                 )
                 .fetch();
+    }
+
+    @Override
+    public Optional<Goal> findGoalByMemberIdAndStartDate(Long memberId, LocalDate startDate) {
+        QGoal goal = QGoal.goal;
+
+        Goal result = queryFactory
+                .selectFrom(goal)
+                .where(
+                        goal.member.id.eq(memberId),
+                        goal.goalStartDate.eq(startDate)
+                )
+                .fetchOne();
+
+        return Optional.ofNullable(result);
     }
 }
 

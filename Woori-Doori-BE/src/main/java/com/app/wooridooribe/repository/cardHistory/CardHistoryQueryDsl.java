@@ -2,6 +2,7 @@ package com.app.wooridooribe.repository.cardHistory;
 
 import com.app.wooridooribe.controller.dto.CardHistorySummaryResponseDto;
 import com.app.wooridooribe.entity.CardHistory;
+import com.app.wooridooribe.entity.type.CategoryType;
 import com.app.wooridooribe.entity.type.StatusType;
 import com.querydsl.core.Tuple;
 
@@ -16,7 +17,7 @@ public interface CardHistoryQueryDsl {
 
     void updateIncludeTotal(Long historyId, boolean includeTotal);
 
-    void updateCategory(Long historyId, String newCategory);
+    void updateCategory(Long historyId, CategoryType newCategory);
 
     void updateDutchpay(Long historyId, int count);
 
@@ -30,4 +31,10 @@ public interface CardHistoryQueryDsl {
 
     // 가장 많이 사용한 카드 TOP 3 조회
     List<Tuple> getTopUsedCardsByMemberAndDateRange(Long memberId, LocalDate startDate, LocalDate endDate);
+
+    // 일별 지출 금액 조회 (소비 안정성 계산용)
+    List<Integer> getDailySpendingByMemberAndDateRange(Long memberId, LocalDate startDate, LocalDate endDate);
+
+    // 필수/비필수 지출 금액 조회 (카테고리 기반)
+    List<Tuple> getEssentialNonEssentialSpending(Long memberId, LocalDate startDate, LocalDate endDate, List<CategoryType> essentialCategories);
 }

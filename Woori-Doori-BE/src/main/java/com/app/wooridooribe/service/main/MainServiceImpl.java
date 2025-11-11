@@ -11,6 +11,7 @@ import com.app.wooridooribe.repository.card.CardRepository;
 import com.app.wooridooribe.repository.cardHistory.CardHistoryRepository;
 import com.app.wooridooribe.repository.goal.GoalRepository;
 import com.app.wooridooribe.util.SecurityUtil;
+import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -58,13 +59,10 @@ public class MainServiceImpl implements MainService {
             duringDate = 0;
         }
 
-        // 3. 총 지출 금액 조회
+        // 3. 총 지출 금액 조회 (QueryDSL)
         Integer totalPaidMoney = cardHistoryRepository.getTotalSpentByMemberAndDateRange(
                 memberId, goalStartDate, today
         );
-        if (totalPaidMoney == null) {
-            totalPaidMoney = 0;
-        }
 
         // 4. 목표 달성률 계산
         Integer goalMoney = latestGoal.getPreviousGoalMoney();
@@ -77,27 +75,27 @@ public class MainServiceImpl implements MainService {
             goalPercent = (int) Math.round((double) totalPaidMoney / goalMoney * 100);
         }
 
-        // 5. 카테고리별 지출 TOP 5 조회
-        List<Object[]> categorySpendingList = cardHistoryRepository.getCategorySpendingByMemberAndDateRange(
+        // 5. 카테고리별 지출 TOP 5 조회 (QueryDSL)
+        List<Tuple> categorySpendingList = cardHistoryRepository.getCategorySpendingByMemberAndDateRange(
                 memberId, goalStartDate, today
         );
         
         List<CategorySpendDto> paidPriceOfCategory = new ArrayList<>();
         String[] ranks = {"top1", "top2", "top3", "top4", "top5"};
         for (int i = 0; i < Math.min(categorySpendingList.size(), 5); i++) {
-            Object[] row = categorySpendingList.get(i);
-            String category = (String) row[0];
-            Long totalPrice = (Long) row[1];
+            Tuple tuple = categorySpendingList.get(i);
+            String category = tuple.get(0, String.class);
+            Integer totalPrice = tuple.get(1, Integer.class);
             
             paidPriceOfCategory.add(CategorySpendDto.builder()
                     .rank(ranks[i])
                     .category(category)
-                    .totalPrice(totalPrice.intValue())
+                    .totalPrice(totalPrice)
                     .build());
         }
 
-        // 6. 가장 많이 사용한 카드 TOP 3 조회 및 카드 배너 정보 가져오기
-        List<Object[]> topUsedCards = cardHistoryRepository.getTopUsedCardsByMemberAndDateRange(
+        // 6. 가장 많이 사용한 카드 TOP 3 조회 및 카드 배너 정보 가져오기 (QueryDSL)
+        List<Tuple> topUsedCards = cardHistoryRepository.getTopUsedCardsByMemberAndDateRange(
                 memberId, goalStartDate, today
         );
         
@@ -106,7 +104,7 @@ public class MainServiceImpl implements MainService {
             // TOP 3까지만 가져오기
             List<Long> top3CardIds = topUsedCards.stream()
                     .limit(3)
-                    .map(row -> (Long) row[0])
+                    .map(tuple -> tuple.get(0, Long.class))
                     .collect(Collectors.toList());
             
             // 카드 정보 조회 (배너 이미지 포함)

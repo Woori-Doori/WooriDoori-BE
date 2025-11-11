@@ -8,6 +8,8 @@ import lombok.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.print.DocFlavor.STRING;
+
 @Entity
 @Getter
 @Setter
@@ -28,7 +30,7 @@ public class Card {
     @Column(name = "card_url", length = 50)
     private String cardUrl; // 카드URL
 
-    @Column(name="card_benef")
+    @Column(name="card_benefit")
     private String cardBenefit;
 
     @Column(name="card_svc")
@@ -36,10 +38,10 @@ public class Card {
     private YESNO cardSvc;
 
     @Column(name="annual_fee_1")
-    private String annualFee1;
+    private String annualFee1; // 연회비 (국내)
 
     @Column(name="annual_fee_2")
-    private String annualFee2;
+    private String annualFee2; // 연회비 (해외)
 
     @Column(name ="card_type")
     @Enumerated(EnumType.STRING)

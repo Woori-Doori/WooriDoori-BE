@@ -3,6 +3,7 @@ package com.app.wooridooribe.service.spending;
 import com.app.wooridooribe.controller.dto.CardHistoryResponseDto;
 import com.app.wooridooribe.controller.dto.CardHistorySummaryResponseDto;
 import com.app.wooridooribe.entity.CardHistory;
+import com.app.wooridooribe.entity.type.CategoryType;
 import com.app.wooridooribe.entity.type.StatusType;
 import com.app.wooridooribe.exception.CustomException;
 import com.app.wooridooribe.exception.ErrorCode;
@@ -94,8 +95,17 @@ public class SpendingServiceImpl implements SpendingService {
             throw new CustomException(ErrorCode.HISTORY_INVALID_CATEGORY);
         }
 
+        // String을 CategoryType으로 변환
+        CategoryType categoryType;
         try {
-            cardHistoryRepository.updateCategory(historyId, newCategory);
+            // ENUM 이름으로 변환 (대소문자 구분 없음)
+            categoryType = CategoryType.valueOf(newCategory.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new CustomException(ErrorCode.HISTORY_INVALID_CATEGORY);
+        }
+
+        try {
+            cardHistoryRepository.updateCategory(historyId, categoryType);
         } catch (CustomException e) {
             throw e;
         } catch (Exception e) {
@@ -149,4 +159,5 @@ public class SpendingServiceImpl implements SpendingService {
             throw new CustomException(ErrorCode.HISTORY_ISNOTYOURS);
         }
     }
+
 }
