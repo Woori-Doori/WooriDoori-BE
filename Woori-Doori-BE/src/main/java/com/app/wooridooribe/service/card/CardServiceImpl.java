@@ -48,7 +48,7 @@ public class CardServiceImpl implements CardService {
         List<Card> cards = cardRepository.findAllWithImage();
 
         return cards.stream()
-                .map(CardResponseDto::fromCard)
+                .map(CardResponseDto::toDTO)
                 .collect(Collectors.toList());
     }
 
