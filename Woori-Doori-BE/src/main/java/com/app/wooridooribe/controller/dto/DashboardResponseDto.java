@@ -34,9 +34,6 @@ public class DashboardResponseDto {
     @Schema(description = "절약 지속성 점수 (20점 만점)", example = "12")
     private Integer continuityScore;
     
-    @Schema(description = "두리의 한마디", example = "절약모드 필요해요!")
-    private String goalComment;
-    
     @Schema(description = "카테고리별 소비 금액 (금액 순으로 정렬된 TOP 4)", 
             example = "{\"FOOD\": 330314, \"TRANSPORT\": 330314, \"SHOPPING\": 330314, \"EDUCATION\": 330314}")
     private Map<CategoryType, Integer> topCategorySpending;

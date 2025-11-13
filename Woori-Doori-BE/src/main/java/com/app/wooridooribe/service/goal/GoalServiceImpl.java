@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.time.LocalDateTime;
@@ -531,7 +532,10 @@ public class GoalServiceImpl implements GoalService {
                 .orElseThrow(() -> new CustomException(ErrorCode.GOAL_ISNULL));
         
         LocalDate startDate = currentGoal.getGoalStartDate();
-        LocalDate endDate = startDate.plusDays(30);
+        LocalDate today = LocalDate.now();
+        // 목표 기간의 종료일과 오늘 중 더 이른 날짜까지 계산 (진행 중인 목표의 경우 오늘까지만 계산)
+        LocalDate goalEndDate = startDate.plusDays(30);
+        LocalDate endDate = today.isBefore(goalEndDate) ? today : goalEndDate;
         Integer goalAmount = currentGoal.getPreviousGoalMoney() != null ? currentGoal.getPreviousGoalMoney() : 0;
         
         // 2. 이번 달 실제 지출 조회 (원 단위)
@@ -557,10 +561,7 @@ public class GoalServiceImpl implements GoalService {
         Integer continuityScore = currentGoal.getGoalContinuityScore() != null 
                 ? currentGoal.getGoalContinuityScore() : 0;
         
-        // 5. 두리의 한마디
-        String goalComment = currentGoal.getGoalComment() != null ? currentGoal.getGoalComment() : "";
-        
-        // 6. 카테고리별 소비 조회 및 TOP 4 추출
+        // 5. 카테고리별 소비 조회 및 TOP 4 추출
         List<Tuple> categorySpendingList = cardHistoryRepository
                 .getCategorySpendingByMemberAndDateRange(memberId, startDate, endDate);
         
@@ -587,7 +588,6 @@ public class GoalServiceImpl implements GoalService {
                 .stabilityScore(stabilityScore)
                 .ratioScore(ratioScore)
                 .continuityScore(continuityScore)
-                .goalComment(goalComment)
                 .topCategorySpending(topCategorySpending)
                 .build();
     }
@@ -609,12 +609,18 @@ public class GoalServiceImpl implements GoalService {
                 .orElseThrow(() -> new CustomException(ErrorCode.GOAL_ISNULL));
 
         LocalDate startDate = pastGoal.getGoalStartDate();
-        LocalDate endDate = startDate.plusDays(30);
+        // 해당 월의 마지막 날까지 계산
+        LocalDate endDate = YearMonth.from(startDate).atEndOfMonth();
         Integer goalAmount = pastGoal.getPreviousGoalMoney() != null ? pastGoal.getPreviousGoalMoney() : 0;
 
         // 2. 해당 월의 실제 지출 조회 (원 단위)
         int actualSpending = cardHistoryRepository.getTotalSpentByMemberAndDateRange(
                 memberId, startDate, endDate);
+        
+        // 디버깅 로그 추가
+        log.info("과거 목표 데이터 조회 - memberId: {}, year: {}, month: {}", memberId, year, month);
+        log.info("목표 시작일: {}, 종료일: {}, 목표 금액(만원): {}", startDate, endDate, goalAmount);
+        log.info("실제 지출(원): {}, 목표 금액(원): {}", actualSpending, goalAmount * 10000);
 
         // 3. 달성률 계산 (0~100)
         // 목표 금액은 만원 단위이므로 원 단위로 변환하여 비교
@@ -623,6 +629,9 @@ public class GoalServiceImpl implements GoalService {
         if (goalAmountInWon > 0) {
             achievementRate = (int) Math.round((double) actualSpending / goalAmountInWon * 100);
             achievementRate = Math.min(100, Math.max(0, achievementRate)); // 0~100 범위 제한
+            log.info("달성률 계산 결과: {}% (실제 지출: {}원 / 목표 금액: {}원)", achievementRate, actualSpending, goalAmountInWon);
+        } else {
+            log.warn("목표 금액이 0이므로 달성률을 계산할 수 없습니다.");
         }
 
         // 4. Goal 엔티티에서 점수들 조회 (null이면 0으로 설정)
@@ -635,10 +644,7 @@ public class GoalServiceImpl implements GoalService {
         Integer continuityScore = pastGoal.getGoalContinuityScore() != null
                 ? pastGoal.getGoalContinuityScore() : 0;
 
-        // 5. 두리의 한마디
-        String goalComment = pastGoal.getGoalComment() != null ? pastGoal.getGoalComment() : "";
-
-        // 6. 카테고리별 소비 조회 및 TOP 4 추출
+        // 5. 카테고리별 소비 조회 및 TOP 4 추출
         List<Tuple> categorySpendingList = cardHistoryRepository
                 .getCategorySpendingByMemberAndDateRange(memberId, startDate, endDate);
 
@@ -665,7 +671,6 @@ public class GoalServiceImpl implements GoalService {
                 .stabilityScore(stabilityScore)
                 .ratioScore(ratioScore)
                 .continuityScore(continuityScore)
-                .goalComment(goalComment)
                 .topCategorySpending(topCategorySpending)
                 .build();
     }

@@ -27,9 +27,6 @@ public class Goal extends Period {
     @Column(name = "goal_start_date")
     private LocalDate goalStartDate; // 목표시작날짜
 
-    @Column(name = "goal_comment")
-    private String goalComment; // 둘리 코멘트
-
     @Column(name = "goal_job")
     @Enumerated(EnumType.STRING)
     private JobType goalJob; // 직업

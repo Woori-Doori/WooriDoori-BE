@@ -72,7 +72,10 @@ public class MainServiceImpl implements MainService {
         
         int goalPercent = 0;
         if (goalMoney > 0) {
-            goalPercent = (int) Math.round((double) totalPaidMoney / goalMoney * 100);
+            // 목표 금액은 만원 단위이므로 원 단위로 변환하여 비교
+            int goalMoneyInWon = goalMoney * 10000;
+            goalPercent = (int) Math.round((double) totalPaidMoney / goalMoneyInWon * 100);
+            goalPercent = Math.min(100, Math.max(0, goalPercent)); // 0~100 범위 제한
         }
 
         // 5. 카테고리별 지출 TOP 5 조회 (QueryDSL)

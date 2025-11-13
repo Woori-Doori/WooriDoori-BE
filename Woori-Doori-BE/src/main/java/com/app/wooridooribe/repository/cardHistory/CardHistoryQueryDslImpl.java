@@ -7,22 +7,20 @@ import com.app.wooridooribe.entity.QMemberCard;
 import com.app.wooridooribe.entity.type.CategoryType;
 import com.app.wooridooribe.entity.type.StatusType;
 import com.querydsl.core.Tuple;
-import com.querydsl.core.types.Projections;
-import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
-import com.querydsl.core.types.dsl.NumberExpression;
-import com.querydsl.core.types.dsl.StringExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @RequiredArgsConstructor
+@Slf4j
 public class CardHistoryQueryDslImpl implements CardHistoryQueryDsl {
 
     private final JPAQueryFactory queryFactory;
@@ -127,8 +125,11 @@ public class CardHistoryQueryDslImpl implements CardHistoryQueryDsl {
                         history.historyIncludeTotal.eq("Y")
                 )
                 .fetchOne();
-
-        return totalSpent != null ? totalSpent : 0;
+        
+        log.info("getTotalSpentByMemberAndDateRange - memberId: {}, startDate: {}, endDate: {}, totalSpent: {}", 
+                memberId, startDate, endDate, totalSpent);
+        
+        return totalSpent;
     }
 
     @Override
