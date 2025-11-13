@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.Optional;
 import java.util.List;
 
 @Repository
@@ -20,6 +21,23 @@ public class GoalQueryDslImpl implements GoalQueryDsl {
 
     private final JPAQueryFactory queryFactory;
     private final MemberRepository memberRepository;
+
+    @Override
+    public Optional<Goal> findCurrentMonthGoalByMemberId(Long memberId) {
+        QGoal goal = QGoal.goal;
+
+        LocalDate thisMonth = LocalDate.now().withDayOfMonth(1);
+
+        Goal result = queryFactory
+                .selectFrom(goal)
+                .where(
+                        goal.member.id.eq(memberId),
+                        goal.goalStartDate.eq(thisMonth)
+                )
+                .fetchOne();
+
+        return Optional.ofNullable(result);
+    }
 
     @Override
     public List<Goal> findGoalsForThisAndNextMonth(Member member) {
@@ -36,11 +54,25 @@ public class GoalQueryDslImpl implements GoalQueryDsl {
                 .fetch();
     }
 
+    @Override
+    public Optional<Goal> findGoalByMemberIdAndStartDate(Long memberId, LocalDate startDate) {
+        QGoal goal = QGoal.goal;
+
+        Goal result = queryFactory
+                .selectFrom(goal)
+                .where(
+                        goal.member.id.eq(memberId),
+                        goal.goalStartDate.eq(startDate)
+                )
+                .fetchOne();
+
+        return Optional.ofNullable(result);
+    }
 
     @Override
-    public List<Goal> findAllGoalsByMember(String userName) {
+    public List<Goal> findAllGoalsByMember(Long memberId) {
 
-        Member member = memberRepository.findByMemberId(userName)
+        Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         QGoal goal = QGoal.goal;
 
