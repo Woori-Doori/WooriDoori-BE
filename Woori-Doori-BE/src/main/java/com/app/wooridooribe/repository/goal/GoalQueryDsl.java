@@ -10,4 +10,6 @@ public interface GoalQueryDsl {
     List<Goal> findGoalsForThisAndNextMonth(Member member);
 
     List<Goal> findAllGoalsByMember(String userName);
+
+    List<Goal> findAllGoalsByMember(Member member);
 }

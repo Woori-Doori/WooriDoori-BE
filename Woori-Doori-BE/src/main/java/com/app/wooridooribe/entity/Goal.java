@@ -29,17 +29,47 @@ public class Goal {
     @Column(name = "previous_goal_money")
     private Integer previousGoalMoney; // 목표금액 (ERD에서는 DATE 타입으로 되어있지만 실제로는 금액)
 
-    @Column(name = "goal_score")
-    private Integer goalScore; // 받은 점수
-
-    @Column(name = "goal_comment")
-    private String goalComment; // 둘리 코멘트
-
     @Column(name = "goal_job")
     @Enumerated(EnumType.STRING)
     private JobType goalJob; // 직업
 
     @Column(name = "goal_income")
     private String goalIncome; // 수입
-}
 
+    @Column(name = "goal_achievement_score")
+    private Integer goalAchievementScore; // 성과 점수
+
+    @Column(name = "goal_continuity_score")
+    private Integer goalContinuityScore; // 지속성 점수
+
+    @Column(name = "goal_ratio_score")
+    private Integer goalRatioScore; // 비율 점수
+
+    @Column(name = "goal_stability_score")
+    private Integer goalStabilityScore; // 안정성 점수
+
+    @Transient
+    public Integer getGoalScore() {
+        int sum = 0;
+        int count = 0;
+
+        if (goalAchievementScore != null) {
+            sum += goalAchievementScore;
+            count++;
+        }
+        if (goalContinuityScore != null) {
+            sum += goalContinuityScore;
+            count++;
+        }
+        if (goalRatioScore != null) {
+            sum += goalRatioScore;
+            count++;
+        }
+        if (goalStabilityScore != null) {
+            sum += goalStabilityScore;
+            count++;
+        }
+
+        return count > 0 ? Math.round((float) sum / count) : null;
+    }
+}
