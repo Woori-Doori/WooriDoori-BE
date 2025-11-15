@@ -51,25 +51,20 @@ public class Goal {
     @Transient
     public Integer getGoalScore() {
         int sum = 0;
-        int count = 0;
 
         if (goalAchievementScore != null) {
             sum += goalAchievementScore;
-            count++;
         }
         if (goalContinuityScore != null) {
             sum += goalContinuityScore;
-            count++;
         }
         if (goalRatioScore != null) {
             sum += goalRatioScore;
-            count++;
         }
         if (goalStabilityScore != null) {
             sum += goalStabilityScore;
-            count++;
         }
 
-        return count > 0 ? Math.round((float) sum / count) : null;
+        return Math.round((float) sum);
     }
 }
