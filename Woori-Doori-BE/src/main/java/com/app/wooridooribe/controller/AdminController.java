@@ -129,7 +129,7 @@ public class AdminController {
     @PostMapping("/send/report")
     public ResponseEntity<ApiResponse<Void>> sendReportNotification(
             @Parameter(description = "리포트 알림 전송 요청 정보", required = true) @Valid @RequestBody AdminReportNotificationRequestDto requestDto) {
-        log.info("관리자 - 리포트 알림 전송 요청: memberId(이메일)={}, month={}", requestDto.getMemberId(), requestDto.getMonth());
+        log.info("관리자 - 리포트 알림 전송 요청: memberId(이메일)={}", requestDto.getMemberId());
 
         // 이메일로 회원 찾기
         Member member = memberRepository.findByMemberId(requestDto.getMemberId())
@@ -142,11 +142,14 @@ public class AdminController {
         log.info("관리자 - 회원 조회 성공: 이메일={}, DB ID={}, 이름={}",
                 requestDto.getMemberId(), memberId, member.getMemberName());
 
-        // SSE를 통해 리포트 알림 전송
-        sseController.sendReportNotification(memberId, requestDto.getMonth());
+        // 현재 월 가져오기
+        int currentMonth = java.time.LocalDate.now().getMonthValue();
+
+        // SSE를 통해 리포트 알림 전송 (현재 월 자동 사용)
+        sseController.sendReportNotification(memberId, currentMonth);
 
         log.info("관리자 - 리포트 알림 전송 완료: DB ID={}, 이메일={}, month={}",
-                memberId, requestDto.getMemberId(), requestDto.getMonth());
+                memberId, requestDto.getMemberId(), currentMonth);
         return ResponseEntity.ok(ApiResponse.res(200, "리포트 알림이 성공적으로 전송되었습니다."));
     }
 }
