@@ -1,6 +1,7 @@
 package com.app.wooridooribe.controller;
 
 import com.app.wooridooribe.controller.dto.AdminCardCreateRequestDto;
+import com.app.wooridooribe.controller.dto.AdminCardEditRequestDto;
 import com.app.wooridooribe.controller.dto.AdminDiaryNotificationRequestDto;
 import com.app.wooridooribe.controller.dto.AdminReportNotificationRequestDto;
 import com.app.wooridooribe.controller.dto.ApiResponse;
@@ -81,6 +82,19 @@ public class AdminController {
         log.info("관리자 - 카드 생성 요청 수신: cardName={}", requestDto.getCardName());
         CardResponseDto createdCard = cardService.createCardForAdmin(requestDto);
         return ResponseEntity.ok(ApiResponse.res(200, "카드가 성공적으로 등록되었습니다!", createdCard));
+    }
+
+    @Operation(summary = "카드 정보 수정", description = "기존 카드의 정보를 수정합니다 (관리자 전용)")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "수정 성공")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "카드를 찾을 수 없음")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음")
+    @PutMapping("/editCard")
+    public ResponseEntity<ApiResponse<CardResponseDto>> editCard(
+            @Parameter(description = "카드 수정 요청 정보", required = true) @Valid @RequestBody AdminCardEditRequestDto requestDto) {
+        log.info("관리자 - 카드 수정 요청 수신: cardId={}", requestDto.getCardId());
+        CardResponseDto updatedCard = cardService.editCardForAdmin(requestDto);
+        return ResponseEntity.ok(ApiResponse.res(200, "카드가 성공적으로 수정되었습니다!", updatedCard));
     }
 
     @Operation(summary = "특정 사용자에게 알림 전송", description = "특정 사용자에게 SSE를 통해 알림을 전송합니다 (관리자 전용)")
