@@ -1,8 +1,8 @@
 package com.app.wooridooribe.scheduler;
 
-import com.app.wooridooribe.controller.SseController;
 import com.app.wooridooribe.entity.Member;
 import com.app.wooridooribe.repository.member.MemberRepository;
+import com.app.wooridooribe.service.sse.SseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,7 +21,7 @@ import java.util.List;
 public class DiaryNotificationScheduler {
 
     private final MemberRepository memberRepository;
-    private final SseController sseController;
+    private final SseService sseService;
 
     /**
      * 매일 UTC 기준 22:00에 실행
@@ -39,7 +39,7 @@ public class DiaryNotificationScheduler {
 
         for (Member member : activeMembers) {
             try {
-                sseController.sendDiaryNotification(member.getId());
+                sseService.sendDiaryNotification(member.getId());
                 successCount++;
             } catch (Exception e) {
                 failCount++;
@@ -50,5 +50,3 @@ public class DiaryNotificationScheduler {
         log.info("DIARY 알림 스케줄 완료 - 성공: {}, 실패: {}", successCount, failCount);
     }
 }
-
-
