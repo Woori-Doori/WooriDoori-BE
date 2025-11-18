@@ -4,6 +4,7 @@ import com.app.wooridooribe.controller.dto.ApiResponse;
 import com.app.wooridooribe.controller.dto.CardCreateRequestDto;
 import com.app.wooridooribe.controller.dto.CardDeleteRequestDto;
 import com.app.wooridooribe.controller.dto.CardEditRequestDto;
+import com.app.wooridooribe.controller.dto.CardRecommendResponseDto;
 import com.app.wooridooribe.controller.dto.CardResponseDto;
 import com.app.wooridooribe.controller.dto.UserCardResponseDto;
 import com.app.wooridooribe.jwt.MemberDetail;
@@ -96,5 +97,21 @@ public class CardController {
 
         return ResponseEntity.ok(
                 ApiResponse.res(HttpStatus.OK.value(), "카드 별명 수정 완료", null));
+    }
+
+    @Operation(summary = "카드 추천", description = "사용자가 결제한 금액 중 TOP1 카테고리에 대한 카드 1~4개를 추천합니다.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "카드 추천 성공", content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패 (JWT 필요)", content = @Content(schema = @Schema(example = "{\"statusCode\": 401, \"errorResultMsg\": \"로그인을 해주세요\", \"errorName\": \"NO_TOKEN\"}")))
+    @GetMapping("/recommend")
+    public ResponseEntity<ApiResponse<CardRecommendResponseDto>> recommendCards(
+            Authentication authentication) {
+        // JWT에서 인증된 사용자 ID 가져오기
+        MemberDetail principal = (MemberDetail) authentication.getPrincipal();
+        Long memberId = principal.getId();
+
+        CardRecommendResponseDto result = cardService.recommendCards(memberId);
+
+        return ResponseEntity.ok(
+                ApiResponse.res(HttpStatus.OK.value(), "카드 추천 조회 성공", result));
     }
 }
