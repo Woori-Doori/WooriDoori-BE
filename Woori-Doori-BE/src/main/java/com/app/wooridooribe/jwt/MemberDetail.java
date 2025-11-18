@@ -20,7 +20,7 @@ public class MemberDetail implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        String authority = member.getAuthority() != null ? member.getAuthority().toString() : "ROLE_USER";
+        String authority = member.getAuthority() != null ? member.getAuthority().getSecurityRole() : "ROLE_USER";
         return Collections.singleton(new SimpleGrantedAuthority(authority));
     }
 
