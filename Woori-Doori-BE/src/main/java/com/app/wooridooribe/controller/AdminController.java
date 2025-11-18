@@ -1,8 +1,10 @@
 package com.app.wooridooribe.controller;
 
 import com.app.wooridooribe.controller.dto.ApiResponse;
+import com.app.wooridooribe.controller.dto.CardResponseDto;
 import com.app.wooridooribe.controller.dto.MemberResponseDto;
 import com.app.wooridooribe.service.member.MemberService;
+import com.app.wooridooribe.service.card.CardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -23,6 +25,7 @@ import java.util.List;
 public class AdminController {
 
     private final MemberService memberService;
+    private final CardService cardService;
 
     @Operation(summary = "전체 회원 조회", description = "모든 회원 정보를 조회합니다 (관리자 전용)")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공")
@@ -40,10 +43,19 @@ public class AdminController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음")
     @GetMapping("/members/{memberId}")
     public ResponseEntity<ApiResponse<MemberResponseDto>> getMemberById(
-            @Parameter(description = "조회할 회원 ID", required = true)
-            @PathVariable Long memberId) {
+            @Parameter(description = "조회할 회원 ID", required = true) @PathVariable Long memberId) {
         log.info("관리자 - 회원 조회: {}", memberId);
         MemberResponseDto member = memberService.getMemberByIdForAdmin(memberId);
         return ResponseEntity.ok(ApiResponse.res(200, "사용자 정보를 불러왔습니다!", member));
+    }
+
+    @Operation(summary = "전체 카드 조회", description = "tbl_card에 등록된 모든 카드 정보를 조회합니다 (관리자 전용)")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음")
+    @GetMapping("/card")
+    public ResponseEntity<ApiResponse<List<CardResponseDto>>> getAllCards() {
+        log.info("관리자 - 전체 카드 조회");
+        List<CardResponseDto> cards = cardService.getAllCards();
+        return ResponseEntity.ok(ApiResponse.res(200, "카드 정보를 불러왔습니다!", cards));
     }
 }
