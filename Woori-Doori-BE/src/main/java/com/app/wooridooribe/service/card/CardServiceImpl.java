@@ -3,6 +3,7 @@ package com.app.wooridooribe.service.card;
 import com.app.wooridooribe.controller.dto.CardCreateRequestDto;
 import com.app.wooridooribe.controller.dto.CardDeleteRequestDto;
 import com.app.wooridooribe.controller.dto.CardEditRequestDto;
+import com.app.wooridooribe.controller.dto.CardRecommendResponseDto;
 import com.app.wooridooribe.controller.dto.CardResponseDto;
 import com.app.wooridooribe.controller.dto.UserCardResponseDto;
 import com.app.wooridooribe.entity.Card;
@@ -10,14 +11,20 @@ import com.app.wooridooribe.entity.Member;
 import com.app.wooridooribe.entity.MemberCard;
 import com.app.wooridooribe.exception.CustomException;
 import com.app.wooridooribe.exception.ErrorCode;
+import com.app.wooridooribe.entity.type.CategoryType;
 import com.app.wooridooribe.repository.card.CardRepository;
+import com.app.wooridooribe.repository.cardHistory.CardHistoryRepository;
 import com.app.wooridooribe.repository.member.MemberRepository;
 import com.app.wooridooribe.repository.memberCard.MemberCardRepository;
+import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -31,14 +38,15 @@ public class CardServiceImpl implements CardService {
     private final MemberCardRepository memberCardRepository;
     private final CardRepository cardRepository;
     private final MemberRepository memberRepository;
+    private final CardHistoryRepository cardHistoryRepository;
 
     @Override
     @Transactional(readOnly = true)
     public List<CardResponseDto> getCardList(Long memberId) {
-        List<MemberCard> memberCards = memberCardRepository.findByMemberIdWithCard(memberId);
+        List<MemberCard> memberCards = memberCardRepository.findMemberCardsByMemberId(memberId);
 
         return memberCards.stream()
-                .map(CardResponseDto::from)
+                .map(CardResponseDto::toDTO)
                 .collect(Collectors.toList());
     }
 
@@ -48,7 +56,7 @@ public class CardServiceImpl implements CardService {
         List<Card> cards = cardRepository.findAllWithImage();
 
         return cards.stream()
-                .map(CardResponseDto::fromCard)
+                .map(CardResponseDto::toDTO)
                 .collect(Collectors.toList());
     }
 
@@ -168,5 +176,124 @@ public class CardServiceImpl implements CardService {
 
         log.info("카드 별명 수정 완료 - memberCardId: {}, memberId: {}, cardAlias: {}",
                 cardId, safeMemberId, request.getCardAlias());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CardRecommendResponseDto recommendCards(Long memberId) {
+        log.info("카드 추천 요청 - memberId: {}", memberId);
+
+        // 1. 현재 년/월 기준으로 사용자의 결제 내역에서 카테고리별 소비 금액 조회
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = YearMonth.from(today).atDay(1); // 이번 달 1일
+        LocalDate endDate = YearMonth.from(today).atEndOfMonth(); // 이번 달 마지막 날
+
+        // 2. 카테고리별 소비 금액 조회 (TOP 1 추출)
+        List<Tuple> categorySpendingList = cardHistoryRepository
+                .getCategorySpendingByMemberAndDateRange(memberId, startDate, endDate);
+
+        if (categorySpendingList == null || categorySpendingList.isEmpty()) {
+            log.warn("카드 추천 - 결제 내역이 없습니다. memberId: {}", memberId);
+            return CardRecommendResponseDto.builder()
+                    .topCategory(null)
+                    .cards(List.of())
+                    .build();
+        }
+
+        // 3. TOP 1 카테고리 추출
+        Tuple topCategoryTuple = categorySpendingList.get(0);
+        CategoryType topCategory = topCategoryTuple.get(0, CategoryType.class);
+
+        if (topCategory == null) {
+            log.warn("카드 추천 - TOP 카테고리를 찾을 수 없습니다. memberId: {}", memberId);
+            return CardRecommendResponseDto.builder()
+                    .topCategory(null)
+                    .cards(List.of())
+                    .build();
+        }
+
+        log.info("카드 추천 - TOP 카테고리: {}, memberId: {}", topCategory, memberId);
+
+        // 4. 여러 카테고리를 순차적으로 확인하여 최대 4개까지 카드 수집
+        List<Long> allCardIds = new ArrayList<>();
+        List<CategoryType> categories = new ArrayList<>();
+
+        // 최대 5개 카테고리까지 확인 (4개가 될 때까지)
+        int maxCategories = Math.min(5, categorySpendingList.size());
+        for (int i = 0; i < maxCategories && allCardIds.size() < 4; i++) {
+            Tuple categoryTuple = categorySpendingList.get(i);
+            CategoryType category = categoryTuple.get(0, CategoryType.class);
+
+            if (category == null) {
+                continue;
+            }
+
+            // 필요한 카드 개수 계산
+            int neededCount = 4 - allCardIds.size();
+
+            // 해당 카테고리에서 인기 카드 조회 (이미 추가된 카드 제외)
+            // 사용 횟수가 0인 카드도 포함하여 최대한 4개를 채움
+            List<Tuple> popularCardsWithCount = cardRepository.findPopularCardsByCategory(
+                    category, allCardIds, neededCount);
+
+            if (popularCardsWithCount != null && !popularCardsWithCount.isEmpty()) {
+                // 필요한 개수만큼만 추가
+                int remainingNeeded = 4 - allCardIds.size();
+                List<Long> categoryCardIds = popularCardsWithCount.stream()
+                        .limit(remainingNeeded)
+                        .map(tuple -> tuple.get(0, Long.class))
+                        .collect(Collectors.toList());
+
+                if (!categoryCardIds.isEmpty()) {
+                    allCardIds.addAll(categoryCardIds);
+                    categories.add(category);
+
+                    log.info("카드 추천 - 카테고리: {}, 추가된 카드 ID: {}, 현재 총 카드 수: {}",
+                            category, categoryCardIds, allCardIds.size());
+
+                    // 4개가 되면 중단
+                    if (allCardIds.size() >= 4) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (allCardIds.isEmpty()) {
+            log.warn("카드 추천 - 추천할 카드가 없습니다. memberId: {}", memberId);
+            return CardRecommendResponseDto.builder()
+                    .topCategory(topCategory)
+                    .cards(List.of())
+                    .build();
+        }
+
+        // 5. 최대 4개까지만 유지
+        allCardIds = allCardIds.stream().limit(4).collect(Collectors.toList());
+
+        log.info("카드 추천 결과 - TOP 카테고리: {}, 사용된 카테고리: {}, 최종 카드 ID: {}, 카드 수: {}",
+                topCategory, categories, allCardIds, allCardIds.size());
+
+        // 6. 카드 정보 조회 (ID 순서 유지)
+        List<Card> recommendedCards = cardRepository.findCardsByIdIn(allCardIds);
+
+        // 7. ID 순서대로 정렬 (전체 사용자 사용 횟수 순서 유지)
+        List<Card> sortedCards = allCardIds.stream()
+                .map(cardId -> recommendedCards.stream()
+                        .filter(card -> card.getId().equals(cardId))
+                        .findFirst()
+                        .orElse(null))
+                .filter(card -> card != null)
+                .collect(Collectors.toList());
+
+        // 8. CardResponseDto로 변환
+        List<CardResponseDto> cardResponseDtos = sortedCards.stream()
+                .map(CardResponseDto::toDTO)
+                .collect(Collectors.toList());
+
+        // 9. CardRecommendResponseDto 생성 및 반환
+        return CardRecommendResponseDto.builder()
+                .topCategory(topCategory)
+                .cards(cardResponseDtos)
+                .build();
     }
 }
