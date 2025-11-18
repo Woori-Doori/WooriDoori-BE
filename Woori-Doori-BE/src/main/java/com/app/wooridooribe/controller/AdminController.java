@@ -10,6 +10,7 @@ import com.app.wooridooribe.exception.CustomException;
 import com.app.wooridooribe.exception.ErrorCode;
 import com.app.wooridooribe.repository.member.MemberRepository;
 import com.app.wooridooribe.service.member.MemberService;
+import com.app.wooridooribe.service.sse.SseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -31,7 +32,7 @@ import java.util.List;
 public class AdminController {
 
     private final MemberService memberService;
-    private final SseController sseController;
+    private final SseService sseService;
     private final MemberRepository memberRepository;
 
     @Operation(summary = "전체 회원 조회", description = "모든 회원 정보를 조회합니다 (관리자 전용)")
@@ -77,7 +78,7 @@ public class AdminController {
         log.info("관리자 - 회원 조회 성공: 이메일={}, DB ID={}, 이름={}",
                 requestDto.getMemberId(), memberId, member.getMemberName());
 
-        boolean sent = sseController.sendToUser(memberId, "message", requestDto.getMessage());
+        boolean sent = sseService.sendToUser(memberId, "message", requestDto.getMessage());
 
         if (sent) {
             log.info("관리자 - 알림 전송 성공: DB ID={}, 이메일={}, 메시지={}",
@@ -85,7 +86,7 @@ public class AdminController {
             return ResponseEntity.ok(ApiResponse.res(200, "알림이 성공적으로 전송되었습니다."));
         } else {
             log.warn("관리자 - 알림 전송 실패: SSE 연결 없음 - DB ID={}, 이메일={}, 현재 연결된 사용자 수={}",
-                    memberId, requestDto.getMemberId(), sseController.getConnectedUserCount());
+                    memberId, requestDto.getMemberId(), sseService.getConnectedUserCount());
             return ResponseEntity.status(404)
                     .body(ApiResponse.error(404,
                             String.format("해당 사용자(이메일: %s, DB ID: %d)가 SSE에 연결되어 있지 않습니다. 먼저 /sse/connect에 연결해주세요.",
@@ -115,7 +116,7 @@ public class AdminController {
                 requestDto.getMemberId(), memberId, member.getMemberName());
 
         // SSE를 통해 일기 알림 전송
-        sseController.sendDiaryNotification(memberId);
+        sseService.sendDiaryNotification(memberId);
 
         log.info("관리자 - 일기 알림 전송 완료: DB ID={}, 이메일={}", memberId, requestDto.getMemberId());
         return ResponseEntity.ok(ApiResponse.res(200, "일기 알림이 성공적으로 전송되었습니다."));
@@ -146,7 +147,7 @@ public class AdminController {
         int currentMonth = java.time.LocalDate.now().getMonthValue();
 
         // SSE를 통해 리포트 알림 전송 (현재 월 자동 사용)
-        sseController.sendReportNotification(memberId, currentMonth);
+        sseService.sendReportNotification(memberId, currentMonth);
 
         log.info("관리자 - 리포트 알림 전송 완료: DB ID={}, 이메일={}, month={}",
                 memberId, requestDto.getMemberId(), currentMonth);

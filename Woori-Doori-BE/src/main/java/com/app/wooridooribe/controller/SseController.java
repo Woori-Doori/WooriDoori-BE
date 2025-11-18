@@ -5,6 +5,7 @@ import com.app.wooridooribe.entity.Member;
 import com.app.wooridooribe.exception.CustomException;
 import com.app.wooridooribe.exception.ErrorCode;
 import com.app.wooridooribe.repository.member.MemberRepository;
+import com.app.wooridooribe.service.sse.SseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,9 +18,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -35,9 +34,9 @@ public class SseController {
     @Value("${FRONTEND_URL}")
     private String frontendUrl;
 
-    private final Map<Long, SseEmitter> emitters = new ConcurrentHashMap<>();
-    private final ObjectMapper objectMapper = new ObjectMapper(); // Spring Boot가 자동 설정한 ObjectMapper 사용 가능
     private final MemberRepository memberRepository;
+    private final SseService sseService;
+    private final ObjectMapper objectMapper;
 
     /**
      * SSE 연결
@@ -73,24 +72,7 @@ public class SseController {
         response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
         response.setHeader("Access-Control-Allow-Headers", "*");
 
-        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
-        emitters.put(memberId, emitter);
-
-        // 연결 종료 시 정리
-        emitter.onCompletion(() -> {
-            emitters.remove(memberId);
-            log.info("SSE 연결 종료 - memberId: {}", memberId);
-        });
-
-        emitter.onTimeout(() -> {
-            emitters.remove(memberId);
-            log.info("SSE 연결 타임아웃 - memberId: {}", memberId);
-        });
-
-        emitter.onError((ex) -> {
-            emitters.remove(memberId);
-            log.error("SSE 연결 에러 - memberId: {}", memberId, ex);
-        });
+        SseEmitter emitter = sseService.createEmitter(memberId);
 
         try {
             emitter.send(SseEmitter.event()
@@ -126,24 +108,15 @@ public class SseController {
                 });
 
         Long memberId = member.getId();
-        SseEmitter emitter = emitters.get(memberId);
+        boolean sent = sseService.sendToUser(memberId, "message", requestDto.getMessage());
 
-        if (emitter != null) {
-            try {
-                emitter.send(SseEmitter.event()
-                        .name("message")
-                        .data(requestDto.getMessage()));
-                log.info("SSE 메시지 전송 성공 - memberId: {}, message: {}", memberId, requestDto.getMessage());
-                return ResponseEntity.ok("메시지 전송 성공");
-            } catch (IOException e) {
-                log.error("SSE 메시지 전송 실패 - memberId: {}", memberId, e);
-                emitters.remove(memberId);
-                return ResponseEntity.status(500).body("메시지 전송 실패: " + e.getMessage());
-            }
+        if (sent) {
+            log.info("SSE 메시지 전송 성공 - memberId: {}, message: {}", memberId, requestDto.getMessage());
+            return ResponseEntity.ok("메시지 전송 성공");
         }
 
-        log.warn("SSE 연결된 클라이언트 없음 - memberId: {}, 현재 연결 수: {}", memberId, emitters.size());
-        return ResponseEntity.status(404).body("연결된 클라이언트가 없습니다. 현재 연결 수: " + emitters.size());
+        log.warn("SSE 연결된 클라이언트 없음 - memberId: {}, 현재 연결 수: {}", memberId, sseService.getConnectedUserCount());
+        return ResponseEntity.status(404).body("연결된 클라이언트가 없습니다. 현재 연결 수: " + sseService.getConnectedUserCount());
     }
 
     /**
@@ -163,101 +136,15 @@ public class SseController {
             return ResponseEntity.status(401).body("인증 정보가 없습니다");
         }
 
-        SseEmitter emitter = emitters.get(memberId);
-        if (emitter != null) {
-            try {
-                String testMessage = "테스트 알림입니다! 현재 시간: " + java.time.LocalDateTime.now();
-                emitter.send(SseEmitter.event()
-                        .name("message")
-                        .data(testMessage));
-                log.info("SSE 테스트 메시지 전송 성공 - memberId: {}", memberId);
-                return ResponseEntity.ok("테스트 메시지 전송 성공: " + testMessage);
-            } catch (IOException e) {
-                log.error("SSE 테스트 메시지 전송 실패 - memberId: {}", memberId, e);
-                emitters.remove(memberId);
-                return ResponseEntity.status(500).body("메시지 전송 실패: " + e.getMessage());
-            }
+        String testMessage = "테스트 알림입니다! 현재 시간: " + java.time.LocalDateTime.now();
+        boolean sent = sseService.sendToUser(memberId, "message", testMessage);
+
+        if (sent) {
+            log.info("SSE 테스트 메시지 전송 성공 - memberId: {}", memberId);
+            return ResponseEntity.ok("테스트 메시지 전송 성공: " + testMessage);
         }
 
         return ResponseEntity.status(404).body("연결된 클라이언트가 없습니다. 먼저 /sse/connect에 연결하세요.");
-    }
-
-    /**
-     * 특정 사용자에게 메시지 전송 (서비스에서 사용)
-     * 
-     * @return true: 전송 성공, false: SSE 연결 없음
-     */
-    public boolean sendToUser(Long memberId, String eventName, Object data) {
-        log.debug("SSE 알림 전송 시도 - memberId: {}, eventName: {}, 현재 연결된 사용자: {}",
-                memberId, eventName, emitters.keySet());
-        SseEmitter emitter = emitters.get(memberId);
-        if (emitter != null) {
-            try {
-                emitter.send(SseEmitter.event()
-                        .name(eventName)
-                        .data(data));
-                log.info("SSE 알림 전송 성공 - memberId: {}, eventName: {}", memberId, eventName);
-                return true;
-            } catch (IOException e) {
-                log.error("SSE 메시지 전송 실패 - memberId: {}", memberId, e);
-                emitters.remove(memberId);
-                return false;
-            }
-        } else {
-            log.warn("SSE 연결된 클라이언트 없음 - memberId: {}, eventName: {}, 현재 연결 수: {}, 연결된 사용자 ID 목록: {}",
-                    memberId, eventName, emitters.size(), emitters.keySet());
-            return false;
-        }
-    }
-
-    /**
-     * 현재 연결된 사용자 수 반환
-     */
-    public int getConnectedUserCount() {
-        return emitters.size();
-    }
-
-    /**
-     * REPORT 타입 알림 전송
-     * 
-     * @param memberId 사용자 ID
-     * @param month    리포트 월 (1-12)
-     */
-    public void sendReportNotification(Long memberId, int month) {
-        try {
-            Map<String, Object> data = new HashMap<>();
-            data.put("title", "리포트 알림");
-            data.put("message", "소비 리포트가 준비되었습니다.");
-            data.put("month", month);
-            data.put("actionUrl", "/report");
-
-            String jsonData = objectMapper.writeValueAsString(data);
-            sendToUser(memberId, "REPORT", jsonData);
-            log.info("REPORT 알림 전송 - memberId: {}, month: {}", memberId, month);
-        } catch (Exception e) {
-            log.error("REPORT 알림 전송 실패 - memberId: {}", memberId, e);
-        }
-    }
-
-    /**
-     * DIARY 타입 알림 전송
-     * 
-     * @param memberId 사용자 ID
-     */
-    public void sendDiaryNotification(Long memberId) {
-        try {
-            String today = java.time.LocalDate.now().toString(); // YYYY-MM-DD 형식
-            Map<String, Object> data = new HashMap<>();
-            data.put("title", "일기 알림");
-            data.put("message", "오늘 하루는 어떠셨나요? 일기를 작성해보세요.");
-            data.put("actionUrl", "/calendar/diary/emotion?date=" + today);
-
-            String jsonData = objectMapper.writeValueAsString(data);
-            sendToUser(memberId, "diary", jsonData);
-            log.info("DIARY 알림 전송 - memberId: {}, date: {}", memberId, today);
-        } catch (Exception e) {
-            log.error("DIARY 알림 전송 실패 - memberId: {}", memberId, e);
-        }
     }
 
     /**
@@ -276,13 +163,12 @@ public class SseController {
             return ResponseEntity.status(401).body("인증 정보가 없습니다");
         }
 
-        SseEmitter emitter = emitters.get(memberId);
-        if (emitter == null) {
+        if (!sseService.isConnected(memberId)) {
             return ResponseEntity.status(404).body("SSE 연결이 없습니다. 먼저 /sse/connect에 연결하세요.");
         }
 
         int currentMonth = java.time.LocalDate.now().getMonthValue();
-        sendReportNotification(memberId, currentMonth);
+        sseService.sendReportNotification(memberId, currentMonth);
         return ResponseEntity.ok("REPORT 알림 전송 완료 (월: " + currentMonth + ")");
     }
 
@@ -302,12 +188,11 @@ public class SseController {
             return ResponseEntity.status(401).body("인증 정보가 없습니다");
         }
 
-        SseEmitter emitter = emitters.get(memberId);
-        if (emitter == null) {
+        if (!sseService.isConnected(memberId)) {
             return ResponseEntity.status(404).body("SSE 연결이 없습니다. 먼저 /sse/connect에 연결하세요.");
         }
 
-        sendDiaryNotification(memberId);
+        sseService.sendDiaryNotification(memberId);
         return ResponseEntity.ok("DIARY 알림 전송 완료");
     }
 
@@ -329,20 +214,23 @@ public class SseController {
             return ResponseEntity.status(401).body("인증 정보가 없습니다");
         }
 
-        SseEmitter emitter = emitters.get(memberId);
-        if (emitter == null) {
+        if (!sseService.isConnected(memberId)) {
             return ResponseEntity.status(404).body("SSE 연결이 없습니다. 먼저 /sse/connect에 연결하세요.");
         }
 
         try {
             String eventName = (String) notificationData.getOrDefault("type", "message");
             String jsonData = objectMapper.writeValueAsString(notificationData);
-            sendToUser(memberId, eventName, jsonData);
+            sseService.sendToUser(memberId, eventName, jsonData);
             return ResponseEntity.ok("알림 전송 완료 (타입: " + eventName + ")");
         } catch (Exception e) {
             log.error("커스텀 알림 전송 실패 - memberId: {}", memberId, e);
             return ResponseEntity.status(500).body("알림 전송 실패: " + e.getMessage());
         }
+    }
+
+    public int getConnectedUserCount() {
+        return sseService.getConnectedUserCount();
     }
 
     private Long getMemberId(Authentication authentication) {
