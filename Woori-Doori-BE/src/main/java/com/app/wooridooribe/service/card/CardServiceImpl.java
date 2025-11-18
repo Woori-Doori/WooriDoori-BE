@@ -1,5 +1,6 @@
 package com.app.wooridooribe.service.card;
 
+import com.app.wooridooribe.controller.dto.AdminCardCreateRequestDto;
 import com.app.wooridooribe.controller.dto.CardCreateRequestDto;
 import com.app.wooridooribe.controller.dto.CardDeleteRequestDto;
 import com.app.wooridooribe.controller.dto.CardEditRequestDto;
@@ -7,6 +8,7 @@ import com.app.wooridooribe.controller.dto.CardRecommendResponseDto;
 import com.app.wooridooribe.controller.dto.CardResponseDto;
 import com.app.wooridooribe.controller.dto.UserCardResponseDto;
 import com.app.wooridooribe.entity.Card;
+import com.app.wooridooribe.entity.File;
 import com.app.wooridooribe.entity.Member;
 import com.app.wooridooribe.entity.MemberCard;
 import com.app.wooridooribe.exception.CustomException;
@@ -14,6 +16,7 @@ import com.app.wooridooribe.exception.ErrorCode;
 import com.app.wooridooribe.entity.type.CategoryType;
 import com.app.wooridooribe.repository.card.CardRepository;
 import com.app.wooridooribe.repository.cardHistory.CardHistoryRepository;
+import com.app.wooridooribe.repository.file.FileRepository;
 import com.app.wooridooribe.repository.member.MemberRepository;
 import com.app.wooridooribe.repository.memberCard.MemberCardRepository;
 import com.querydsl.core.Tuple;
@@ -39,6 +42,7 @@ public class CardServiceImpl implements CardService {
     private final CardRepository cardRepository;
     private final MemberRepository memberRepository;
     private final CardHistoryRepository cardHistoryRepository;
+    private final FileRepository fileRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -58,6 +62,42 @@ public class CardServiceImpl implements CardService {
         return cards.stream()
                 .map(CardResponseDto::toDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public CardResponseDto createCardForAdmin(AdminCardCreateRequestDto request) {
+        log.info("관리자 - 카드 생성 요청 수신: cardName={}", request.getCardName());
+
+        Long cardImageFileId = Objects.requireNonNull(request.getCardImageFileId(), "cardImageFileId must not be null");
+        File cardImage = fileRepository.findById(cardImageFileId)
+                .orElseThrow(() -> new CustomException(ErrorCode.FILE_NOT_FOUND));
+
+        File cardBanner = null;
+        Long cardBannerFileId = request.getCardBannerFileId();
+        if (cardBannerFileId != null) {
+            cardBanner = fileRepository.findById(cardBannerFileId)
+                    .orElseThrow(() -> new CustomException(ErrorCode.FILE_NOT_FOUND));
+        }
+
+        Card newCard = Card.builder()
+                .cardName(request.getCardName())
+                .cardBenefit(request.getCardBenefit())
+                .cardSvc(request.getCardSvc())
+                .annualFee1(request.getAnnualFee1())
+                .annualFee2(request.getAnnualFee2())
+                .cardType(request.getCardType())
+                .cardImage(cardImage)
+                .cardBanner(cardBanner)
+                .build();
+
+        Long nextCardId = Optional.ofNullable(cardRepository.findMaxCardId()).orElse(0L) + 1;
+        newCard.setId(nextCardId);
+
+        Card savedCard = cardRepository.save(newCard);
+        log.info("관리자 - 카드 생성 완료: cardId={}, cardName={}", savedCard.getId(), savedCard.getCardName());
+
+        return CardResponseDto.toDTO(savedCard);
     }
 
     @Override
