@@ -68,6 +68,8 @@ public class AdminController {
         log.info("관리자 - 전체 카드 조회");
         List<CardResponseDto> cards = cardService.getAllCards();
         return ResponseEntity.ok(ApiResponse.res(200, "카드 정보를 불러왔습니다!", cards));
+    }
+
     @Operation(summary = "특정 사용자에게 알림 전송", description = "특정 사용자에게 SSE를 통해 알림을 전송합니다 (관리자 전용)")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "알림 전송 성공")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청")
