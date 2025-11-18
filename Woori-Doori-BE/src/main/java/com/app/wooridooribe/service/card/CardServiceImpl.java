@@ -1,6 +1,7 @@
 package com.app.wooridooribe.service.card;
 
 import com.app.wooridooribe.controller.dto.AdminCardCreateRequestDto;
+import com.app.wooridooribe.controller.dto.AdminCardEditRequestDto;
 import com.app.wooridooribe.controller.dto.CardCreateRequestDto;
 import com.app.wooridooribe.controller.dto.CardDeleteRequestDto;
 import com.app.wooridooribe.controller.dto.CardEditRequestDto;
@@ -96,6 +97,77 @@ public class CardServiceImpl implements CardService {
 
         Card savedCard = cardRepository.save(newCard);
         log.info("관리자 - 카드 생성 완료: cardId={}, cardName={}", savedCard.getId(), savedCard.getCardName());
+
+        return CardResponseDto.toDTO(savedCard);
+    }
+
+    @Override
+    @Transactional
+    public CardResponseDto editCardForAdmin(AdminCardEditRequestDto request) {
+        Long cardId = Objects.requireNonNull(request.getCardId(), "cardId must not be null");
+        log.info("관리자 - 카드 수정 요청 수신: cardId={}", cardId);
+
+        // 카드 조회
+        Card card = cardRepository.findById(cardId)
+                .orElseThrow(() -> {
+                    log.warn("관리자 - 카드 수정 실패: 카드를 찾을 수 없음 - cardId={}", cardId);
+                    return new CustomException(ErrorCode.CARD_ISNULL);
+                });
+
+        // 카드명 수정
+        if (request.getCardName() != null && !request.getCardName().isEmpty()) {
+            card.setCardName(request.getCardName());
+        }
+
+        // 연회비 수정
+        if (request.getAnnualFee1() != null) {
+            card.setAnnualFee1(request.getAnnualFee1());
+        }
+        if (request.getAnnualFee2() != null) {
+            card.setAnnualFee2(request.getAnnualFee2());
+        }
+
+        // 카드 혜택 수정
+        if (request.getCardBenefit() != null) {
+            card.setCardBenefit(request.getCardBenefit());
+        }
+
+        // 카드 타입 수정
+        if (request.getCardType() != null) {
+            card.setCardType(request.getCardType());
+        }
+
+        // 서비스 여부 수정
+        if (request.getCardSvc() != null) {
+            card.setCardSvc(request.getCardSvc());
+        }
+
+        // 카드 이미지 수정
+        if (request.getCardImageFileId() != null) {
+            Long cardImageFileId = Objects.requireNonNull(request.getCardImageFileId(),
+                    "cardImageFileId must not be null");
+            File cardImage = fileRepository.findById(cardImageFileId)
+                    .orElseThrow(() -> {
+                        log.warn("관리자 - 카드 수정 실패: 카드 이미지 파일을 찾을 수 없음 - fileId={}", cardImageFileId);
+                        return new CustomException(ErrorCode.FILE_NOT_FOUND);
+                    });
+            card.setCardImage(cardImage);
+        }
+
+        // 카드 배너 수정
+        if (request.getCardBannerFileId() != null) {
+            Long cardBannerFileId = Objects.requireNonNull(request.getCardBannerFileId(),
+                    "cardBannerFileId must not be null");
+            File cardBanner = fileRepository.findById(cardBannerFileId)
+                    .orElseThrow(() -> {
+                        log.warn("관리자 - 카드 수정 실패: 카드 배너 파일을 찾을 수 없음 - fileId={}", cardBannerFileId);
+                        return new CustomException(ErrorCode.FILE_NOT_FOUND);
+                    });
+            card.setCardBanner(cardBanner);
+        }
+
+        Card savedCard = Objects.requireNonNull(cardRepository.save(card), "savedCard must not be null");
+        log.info("관리자 - 카드 수정 완료: cardId={}, cardName={}", savedCard.getId(), savedCard.getCardName());
 
         return CardResponseDto.toDTO(savedCard);
     }
