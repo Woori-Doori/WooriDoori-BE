@@ -257,7 +257,7 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.res(200, "카드가 성공적으로 수정되었습니다!", updatedCard));
     }
 
-    @Operation(summary = "카드 삭제 (Soft Delete)", description = "카드를 삭제합니다. status를 UNABLE로 변경하여 soft delete를 수행합니다 (관리자 전용)")
+    @Operation(summary = "카드 삭제", description = "카드를 삭제합니다. status를 UNABLE로 변경하여 soft delete를 수행합니다 (관리자 전용)")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "삭제 성공")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "카드를 찾을 수 없음")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "410", description = "이미 삭제된 카드")
