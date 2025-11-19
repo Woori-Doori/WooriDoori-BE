@@ -19,4 +19,7 @@ public interface CardRepository extends JpaRepository<Card, Long>, CardQueryDsl 
             "LEFT JOIN FETCH c.cardBanner " +
             "WHERE c.id IN :cardIds")
     List<Card> findCardsByIdIn(@Param("cardIds") List<Long> cardIds);
+
+    @Query("SELECT COALESCE(MAX(c.id), 0) FROM Card c")
+    Long findMaxCardId();
 }
