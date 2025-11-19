@@ -18,8 +18,7 @@ import java.util.List;
 public class Card {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id; // 카드 고유번호
+    private Long id; // 카드 고유번호 (애플리케이션에서 수동 생성)
 
 
     @Column(name = "card_name", nullable = false)

@@ -20,6 +20,7 @@ import com.app.wooridooribe.repository.cardHistory.CardHistoryRepository;
 import com.app.wooridooribe.repository.file.FileRepository;
 import com.app.wooridooribe.repository.member.MemberRepository;
 import com.app.wooridooribe.repository.memberCard.MemberCardRepository;
+import com.app.wooridooribe.service.s3FileService.S3FileService;
 import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +45,7 @@ public class CardServiceImpl implements CardService {
     private final MemberRepository memberRepository;
     private final CardHistoryRepository cardHistoryRepository;
     private final FileRepository fileRepository;
+    private final S3FileService s3FileService;
 
     @Override
     @Transactional(readOnly = true)
@@ -81,7 +83,12 @@ public class CardServiceImpl implements CardService {
                     .orElseThrow(() -> new CustomException(ErrorCode.FILE_NOT_FOUND));
         }
 
+        // 최대 ID 조회 후 +1하여 새 ID 생성
+        Long maxCardId = cardRepository.findMaxCardId();
+        Long newCardId = maxCardId + 1;
+
         Card newCard = Card.builder()
+                .id(newCardId)
                 .cardName(request.getCardName())
                 .cardBenefit(request.getCardBenefit())
                 .cardSvc(request.getCardSvc())
@@ -91,9 +98,6 @@ public class CardServiceImpl implements CardService {
                 .cardImage(cardImage)
                 .cardBanner(cardBanner)
                 .build();
-
-        Long nextCardId = Optional.ofNullable(cardRepository.findMaxCardId()).orElse(0L) + 1;
-        newCard.setId(nextCardId);
 
         Card savedCard = cardRepository.save(newCard);
         log.info("관리자 - 카드 생성 완료: cardId={}, cardName={}", savedCard.getId(), savedCard.getCardName());
@@ -170,6 +174,62 @@ public class CardServiceImpl implements CardService {
         log.info("관리자 - 카드 수정 완료: cardId={}, cardName={}", savedCard.getId(), savedCard.getCardName());
 
         return CardResponseDto.toDTO(savedCard);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCardForAdmin(Long cardId) {
+        Long safeCardId = Objects.requireNonNull(cardId, "cardId must not be null");
+        log.info("관리자 - 카드 삭제 요청 수신: cardId={}", safeCardId);
+
+        Card card = cardRepository.findById(safeCardId)
+                .orElseThrow(() -> {
+                    log.warn("관리자 - 카드 삭제 실패: 카드를 찾을 수 없음 - cardId={}", safeCardId);
+                    return new CustomException(ErrorCode.CARD_ISNULL);
+                });
+
+        // 카드 이미지 파일 삭제 (S3 및 DB)
+        File cardImage = card.getCardImage();
+        if (cardImage != null) {
+            try {
+                // S3에서 파일 삭제
+                boolean s3Deleted = s3FileService.deleteImage(cardImage.getUuid());
+                if (s3Deleted) {
+                    log.info("관리자 - 카드 이미지 S3 삭제 완료: fileId={}, uuid={}", cardImage.getId(), cardImage.getUuid());
+                } else {
+                    log.warn("관리자 - 카드 이미지 S3 삭제 실패: fileId={}, uuid={}", cardImage.getId(), cardImage.getUuid());
+                }
+                // DB에서 File 엔티티 삭제
+                fileRepository.delete(cardImage);
+                log.info("관리자 - 카드 이미지 File 엔티티 삭제 완료: fileId={}", cardImage.getId());
+            } catch (Exception e) {
+                log.error("관리자 - 카드 이미지 삭제 중 오류 발생: fileId={}, error={}", cardImage.getId(), e.getMessage(), e);
+            }
+        }
+
+        // 카드 배너 이미지 파일 삭제 (S3 및 DB)
+        File cardBanner = card.getCardBanner();
+        if (cardBanner != null) {
+            try {
+                // S3에서 파일 삭제
+                boolean s3Deleted = s3FileService.deleteImage(cardBanner.getUuid());
+                if (s3Deleted) {
+                    log.info("관리자 - 카드 배너 이미지 S3 삭제 완료: fileId={}, uuid={}", cardBanner.getId(), cardBanner.getUuid());
+                } else {
+                    log.warn("관리자 - 카드 배너 이미지 S3 삭제 실패: fileId={}, uuid={}", cardBanner.getId(), cardBanner.getUuid());
+                }
+                // DB에서 File 엔티티 삭제
+                fileRepository.delete(cardBanner);
+                log.info("관리자 - 카드 배너 이미지 File 엔티티 삭제 완료: fileId={}", cardBanner.getId());
+            } catch (Exception e) {
+                log.error("관리자 - 카드 배너 이미지 삭제 중 오류 발생: fileId={}, error={}", cardBanner.getId(), e.getMessage(), e);
+            }
+        }
+
+        // 카드 삭제 (하드 삭제)
+        cardRepository.delete(card);
+
+        log.info("관리자 - 카드 삭제 완료: cardId={}, cardName={}", safeCardId, card.getCardName());
     }
 
     @Override
