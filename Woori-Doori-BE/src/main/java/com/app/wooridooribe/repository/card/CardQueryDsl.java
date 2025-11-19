@@ -2,6 +2,7 @@ package com.app.wooridooribe.repository.card;
 
 import com.app.wooridooribe.entity.Card;
 import com.app.wooridooribe.entity.type.CategoryType;
+import com.querydsl.core.Tuple;
 
 import java.util.List;
 
@@ -22,7 +23,7 @@ public interface CardQueryDsl {
      * @param limit          조회할 최대 개수
      * @return 카드 ID와 전체 사용자 사용 횟수 Tuple 리스트
      */
-    List<com.querydsl.core.Tuple> findPopularCardsByCategory(CategoryType categoryType, List<Long> excludeCardIds,
+    List<Tuple> findPopularCardsByCategory(CategoryType categoryType, List<Long> excludeCardIds,
             int limit);
 
     /**
@@ -32,5 +33,5 @@ public interface CardQueryDsl {
      * @param limit 조회할 최대 개수
      * @return 카드 ID와 전체 사용자 등록 횟수 Tuple 리스트
      */
-    List<com.querydsl.core.Tuple> findPopularCardsOverall(int limit);
+    List<Tuple> findPopularCardsOverall(int limit);
 }
