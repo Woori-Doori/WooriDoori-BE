@@ -1,4 +1,5 @@
 package com.app.wooridooribe.repository.goal;
+import com.app.wooridooribe.controller.dto.SetGoalDto;
 import com.app.wooridooribe.entity.Goal;
 import com.app.wooridooribe.entity.Member;
 import com.app.wooridooribe.entity.QGoal;
@@ -66,5 +67,17 @@ public class GoalQueryDslImpl implements GoalQueryDsl {
                 .where(goal.member.eq(member))
                 .orderBy(goal.goalStartDate.asc())
                 .fetch();
+    }
+
+    @Override
+    public Goal findLatestGoalByMember(Long memberId) {
+        QGoal goal = QGoal.goal;
+
+        return queryFactory
+                .selectFrom(goal)
+                .where(goal.member.id.eq(memberId))
+                .orderBy(goal.goalStartDate.desc())
+                .limit(1)
+                .fetchOne();
     }
 }

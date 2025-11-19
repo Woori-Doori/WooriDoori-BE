@@ -143,4 +143,12 @@ public class GoalController {
         return ResponseEntity.ok(ApiResponse.res(200, "목표 히스토리를 불러왔어요", result));
 
     }
+
+    @GetMapping("/current")
+    public ResponseEntity<ApiResponse<SetGoalDto>> getCurrentGoal(Authentication authentication) {
+        Long memberId = ((MemberDetail) authentication.getPrincipal()).getMember().getId();
+        SetGoalDto result = goalService.getCurrentGoal(memberId);
+        log.info("current goal 요청 memberId = {}", memberId);
+        return ResponseEntity.ok(ApiResponse.res(200, "현재 목표를 불러왔습니다", result));
+    }
 }

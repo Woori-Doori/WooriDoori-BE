@@ -1,5 +1,6 @@
 package com.app.wooridooribe.repository.goal;
 
+import com.app.wooridooribe.controller.dto.SetGoalDto;
 import com.app.wooridooribe.entity.Goal;
 import com.app.wooridooribe.entity.Member;
 
@@ -17,4 +18,6 @@ public interface GoalQueryDsl {
     Optional<Goal> findGoalByMemberIdAndStartDate(Long memberId, LocalDate startDate);
 
     List<Goal> findAllGoalsByMember(Long memberId);
+
+    Goal findLatestGoalByMember(Long memberId);
 }

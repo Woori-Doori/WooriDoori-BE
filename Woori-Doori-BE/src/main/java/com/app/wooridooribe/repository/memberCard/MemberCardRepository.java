@@ -1,6 +1,8 @@
 package com.app.wooridooribe.repository.memberCard;
 
+import com.app.wooridooribe.entity.CategoryMember;
 import com.app.wooridooribe.entity.MemberCard;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -672,5 +672,31 @@ public class GoalServiceImpl implements GoalService {
                 .toList();
 
     }
+    @Override
+    public SetGoalDto getCurrentGoal(Long memberId) {
+
+        Goal g = goalRepository.findLatestGoalByMember(memberId);
+
+        if (g == null) {
+            throw new CustomException(ErrorCode.GOAL_ISNULL);
+        }
+        // 🔥 필수 카테고리는 Goal이 아니라 Member 기준
+        List<CategoryMember> categoryList =
+                categoryMemberRepository.findByMemberId(memberId);
+
+        // ENUM만 뽑아서 DTO에 넣을 형태로 변환
+        List<CategoryType> essentialCategories = categoryList.stream()
+                .map(CategoryMember::getCategoryType)
+                .toList();
+
+        return SetGoalDto.builder()
+                .goalJob(g.getGoalJob())
+                .goalStartDate(g.getGoalStartDate())
+                .goalIncome(g.getGoalIncome())
+                .previousGoalMoney(g.getPreviousGoalMoney())
+                // 🔥 수정: 엔티티 대신 Member별 카테고리 사용
+                .essentialCategories(essentialCategories)
+                .build();
+    }
 
 }
