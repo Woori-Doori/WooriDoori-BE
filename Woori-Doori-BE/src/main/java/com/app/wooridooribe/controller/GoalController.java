@@ -145,6 +145,14 @@ public class GoalController {
     }
 
     @GetMapping("/current")
+    @Operation(
+            summary = "이번 달 목표 조회",
+            description = "현재 로그인한 사용자의 이번 달 목표 금액과 관련 데이터를 반환합니다"
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "이번 달 목표 조회 성공")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "이번 달 목표가 존재하지 않습니다")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패 (JWT 필요)")
     public ResponseEntity<ApiResponse<SetGoalDto>> getCurrentGoal(Authentication authentication) {
         Long memberId = ((MemberDetail) authentication.getPrincipal()).getMember().getId();
         SetGoalDto result = goalService.getCurrentGoal(memberId);
