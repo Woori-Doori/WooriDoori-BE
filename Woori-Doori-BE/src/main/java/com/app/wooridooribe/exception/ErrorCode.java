@@ -61,6 +61,13 @@ public enum ErrorCode {
     HISTORY_PRICE_UPDATE_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "HISTORY-011", "금액 수정에 실패했습니다."),
     HISTORY_INVALID_PRICE(HttpStatus.BAD_REQUEST, "HISTORY-012", "유효하지 않은 금액 값입니다."),
 
+    // 결제 동기화 (두리뱅킹 연동)
+    BANK_HISTORY_NOT_FOUND(HttpStatus.NOT_FOUND, "BANK-001", "두리뱅킹 결제 내역을 찾을 수 없습니다."),
+    BANK_ACCOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "BANK-002", "계좌번호가 결제 내역과 일치하지 않습니다."),
+    BANK_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "BANK-003", "두리뱅킹 회원 정보와 일치하는 사용자를 찾을 수 없습니다."),
+    BANK_CARD_NOT_FOUND(HttpStatus.NOT_FOUND, "BANK-004", "해당 사용자의 카드가 존재하지 않습니다."),
+    BANK_SYNC_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "BANK-005", "결제 동기화에 실패했습니다."),
+
 
     // 소비 일기
     DIARY_INSERT_INVALID(HttpStatus.BAD_REQUEST, "DIARY-001", "일기가 너무 깁니다."),
