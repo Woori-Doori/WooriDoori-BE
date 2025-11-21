@@ -7,16 +7,21 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
-public interface CardRepository extends JpaRepository<Card, Long> {
+public interface CardRepository extends JpaRepository<Card, Long>, CardQueryDsl {
 
     @Query("SELECT c FROM Card c LEFT JOIN FETCH c.cardImage")
     List<Card> findAllWithImage();
 
     /**
      * 카드 ID 리스트로 카드 정보를 조회합니다.
+     * cardImage와 cardBanner를 함께 fetch합니다.
      */
     @Query("SELECT c FROM Card c " +
+            "LEFT JOIN FETCH c.cardImage " +
             "LEFT JOIN FETCH c.cardBanner " +
             "WHERE c.id IN :cardIds")
     List<Card> findCardsByIdIn(@Param("cardIds") List<Long> cardIds);
+
+    @Query("SELECT COALESCE(MAX(c.id), 0) FROM Card c")
+    Long findMaxCardId();
 }

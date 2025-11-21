@@ -2,7 +2,7 @@ package com.app.wooridooribe.service.payment;
 
 import com.app.dooribankbe.domain.entity.AccountHistory;
 import com.app.dooribankbe.domain.repository.AccountHistoryRepository;
-import com.app.wooridooribe.controller.SseController;
+import com.app.wooridooribe.service.sse.SseService;
 import com.app.wooridooribe.entity.CardHistory;
 import com.app.wooridooribe.entity.Goal;
 import com.app.wooridooribe.entity.Member;
@@ -38,7 +38,7 @@ public class PaymentSyncService {
     private final MemberRepository memberRepository;
     private final MemberCardRepository memberCardRepository;
     private final GoalRepository goalRepository;
-    private final SseController sseController;
+    private final SseService sseService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -182,7 +182,7 @@ public class PaymentSyncService {
         
         return savedId;
     }
-    
+
     /**
      * 목표 달성률을 계산하고 20% 단위로 위험도가 변경되었는지 체크하여 알림을 전송합니다.
      * 히스토리가 추가될 때만 호출되며, 이전 지출 금액과 비교하여 레벨이 올라갔을 때만 알림을 전송합니다.
@@ -316,7 +316,7 @@ public class PaymentSyncService {
             data.put("percent", currentPercent);
             
             String jsonData = objectMapper.writeValueAsString(data);
-            sseController.sendToUser(memberId, "goal", jsonData);
+            sseService.sendToUser(memberId, "goal", jsonData);
             
             log.info("위험도 알림 전송: memberId={}, riskLevel={}%, currentPercent={}%", 
                     memberId, riskLevel, currentPercent);

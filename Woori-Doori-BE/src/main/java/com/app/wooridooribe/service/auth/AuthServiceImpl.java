@@ -130,6 +130,7 @@ public class AuthServiceImpl implements AuthService {
             
             return LoginResponseDto.builder()
                     .name(memberDetail.getName())
+                    .authority(memberDetail.getMember().getAuthority())
                     .tokens(tokens)
                     .build();
                     

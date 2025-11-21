@@ -1,12 +1,35 @@
 
 server:
   port: 8080
-
+  timezone: Asia/Seoul
 
 spring:
   application:
     name: WooriDoori-BE
-  timezone: Asia/Seoul
+  # spring ai
+  ai:
+    openai:
+      # Groq API (Chat용)
+      api-key: ${GROQ_API_KEY}
+      base-url: https://api.groq.com/openai
+      chat:
+        options:
+          model: llama-3.1-8b-instant
+          temperature: 0.7
+      # OpenAI 임베딩 비활성화 (Groq는 임베딩을 제공하지 않음)
+      embedding:
+        enabled: false
+    ollama:
+      # Ollama (임베딩용 - 로컬 실행 필요)
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      embedding:
+        model: nomic-embed-text # 임베딩 전용 모델
+    vectorstore:
+      chroma:
+        enabled: false # 자동 설정 비활성화, 수동으로 설정
+        initialize-schema: true
+        client:
+          base-url: ${CHROMA_BASE_URL:http://localhost:8000}
 
   datasource:
     db1:
@@ -35,6 +58,14 @@ spring:
         max-lifetime: 1800000
         idle-timeout: 600000
         leak-detection-threshold: 60000
+
+  mvc:
+    hiddenmethod:
+      filter:
+        enabled: true
+    static-path-pattern: /files/**
+
+
   servlet:
     multipart:
       max-file-size: 10MB
@@ -62,7 +93,7 @@ spring:
     redis:
       host: ${REDIS_URL}
       port: ${REDIS_PORT}
-      password:
+      password:    # 비밀번호 없으면 비워둬도 됨
       timeout: 6000ms
 
   # log
@@ -101,6 +132,13 @@ springdoc:
     path: /v3/api-docs
   default-consumes-media-type: application/json
 
+app:
+  chat:
+    persona: classpath:prompts/persona_default.md
+    rules: classpath:prompts/rules_score.md
+
+# 프론트엔드 URL 설정
+FRONTEND_URL: http://localhost:5173
 # Actuator 설정
 management:
   endpoints:

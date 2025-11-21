@@ -3,7 +3,6 @@ package com.app.wooridooribe.controller.dto;
 import com.app.wooridooribe.entity.Card;
 import com.app.wooridooribe.entity.MemberCard;
 import com.app.wooridooribe.entity.type.CardType;
-import com.app.wooridooribe.entity.type.YESNO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -36,16 +35,32 @@ public class CardResponseDto {
     @Schema(description = "연회비 2", example = "해외겸용 12,000")
     private String annualFee2;
 
-    public static CardResponseDto from(MemberCard memberCard) {
+    @Schema(description = "카드 이미지 File ID", example = "123")
+    private Long cardImageFileId;
+
+    @Schema(description = "카드 배너 이미지 File ID", example = "456")
+    private Long cardBannerFileId;
+
+    public static CardResponseDto toDTO(MemberCard memberCard) {
         Card card = memberCard.getCard();
 
-        // YESNO enum을 YES/NO 문자열로 변환
-        String cardSvcStr = card.getCardSvc() == YESNO.YES ? "YES" : "NO";
+        // YESNO enum을 문자열로 변환 (enum.name() 사용)
+        String cardSvcStr = card.getCardSvc() != null ? card.getCardSvc().name() : null;
 
         // File 엔티티에서 카드 이미지 URL - file_path에 이미 전체 URL이 있으므로 그대로 사용
         String cardUrl = "";
-        if (card.getCardImage() != null && card.getCardImage().getFilePath() != null) {
-            cardUrl = card.getCardImage().getFilePath();
+        Long cardImageFileId = null;
+        if (card.getCardImage() != null) {
+            if (card.getCardImage().getFilePath() != null) {
+                cardUrl = card.getCardImage().getFilePath();
+            }
+            cardImageFileId = card.getCardImage().getId();
+        }
+
+        // 카드 배너 이미지 정보
+        Long cardBannerFileId = null;
+        if (card.getCardBanner() != null) {
+            cardBannerFileId = card.getCardBanner().getId();
         }
 
         return CardResponseDto.builder()
@@ -57,17 +72,29 @@ public class CardResponseDto {
                 .cardSvc(cardSvcStr)
                 .annualFee1(card.getAnnualFee1() != null ? card.getAnnualFee1() : "")
                 .annualFee2(card.getAnnualFee2() != null ? card.getAnnualFee2() : "")
+                .cardImageFileId(cardImageFileId)
+                .cardBannerFileId(cardBannerFileId)
                 .build();
     }
 
-    public static CardResponseDto fromCard(Card card) {
-        // YESNO enum을 YES/NO 문자열로 변환
-        String cardSvcStr = card.getCardSvc() == YESNO.YES ? "YES" : "NO";
+    public static CardResponseDto toDTO(Card card) {
+        // YESNO enum을 문자열로 변환 (enum.name() 사용)
+        String cardSvcStr = card.getCardSvc() != null ? card.getCardSvc().name() : null;
 
         // File 엔티티에서 카드 이미지 URL - file_path에 이미 전체 URL이 있으므로 그대로 사용
         String cardUrl = "";
-        if (card.getCardImage() != null && card.getCardImage().getFilePath() != null) {
-            cardUrl = card.getCardImage().getFilePath();
+        Long cardImageFileId = null;
+        if (card.getCardImage() != null) {
+            if (card.getCardImage().getFilePath() != null) {
+                cardUrl = card.getCardImage().getFilePath();
+            }
+            cardImageFileId = card.getCardImage().getId();
+        }
+
+        // 카드 배너 이미지 정보
+        Long cardBannerFileId = null;
+        if (card.getCardBanner() != null) {
+            cardBannerFileId = card.getCardBanner().getId();
         }
 
         return CardResponseDto.builder()
@@ -79,6 +106,8 @@ public class CardResponseDto {
                 .cardSvc(cardSvcStr)
                 .annualFee1(card.getAnnualFee1() != null ? card.getAnnualFee1() : "")
                 .annualFee2(card.getAnnualFee2() != null ? card.getAnnualFee2() : "")
+                .cardImageFileId(cardImageFileId)
+                .cardBannerFileId(cardBannerFileId)
                 .build();
     }
 }
